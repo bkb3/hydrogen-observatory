@@ -1364,3 +1364,23 @@ Estimated time of measurements: 600.001 seconds
 Tuning to 1420700000 Hz (try 1)
 Device tuned to: 1420700000 Hz
 Acquisition started at 2026-09-05 11:49:52 UTC
+Acquisition done at 2026-09-05 12:00:01 UTC
+Actual number of (complex) samples collected: 1200001024
+Actual number of device readouts: 1465
+Number of successful readouts: 1465
+Actual number of averaged spectra: 585938
+Effective integration time: 600.001 seconds
+Buffer queue histogram: 0 0 0 0 1464 1 
+Found Elonics E4000 tuner
+Available gains (in 1/10th of dB): -10, 15, 40, 65, 90, 115, 140, 165, 190, 215, 240, 290, 340, 420
+Selected nearest available gain: 290 (29 dB)
+Exact sample rate is: 2000000.052982 Hz
+Actual sample rate: 2000000 Hz
+Number of bins: 2048
+Total number of (complex) samples to collect: 1200001024
+Buffer length: 1638400
+Number of averaged spectra: 585938
+Estimated time of measurements: 600.001 seconds
+Tuning to 1420700000 Hz (try 1)
+Device tuned to: 1420700000 Hz
+Acquisition started at 2026-09-05 12:00:18 UTC
