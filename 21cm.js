@@ -421,7 +421,7 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
                     type: "linear",
                     position: "left",
                     min: -1.0,
-                    max: 3.0,
+                    max: 1.0,
                     title: { display: true, text: "Corrected Power (dB)", color: "#1e3a8a", font: { size: 12, weight: "bold" } },
                     grid: { color: "#f1f5f9" }
                 },
