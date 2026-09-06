@@ -1,3 +1,5 @@
 nohup python3 -m http.server 9002 > server_web.log 2>&1 &
 
-nohup ./radio_telescope.sh > telescope_system.log 2>&1 &
+# nohup ./radio_telescope.sh > telescope_system.log 2>&1 &
+nohup ./radio_telescope.sh 2>&1 | gzip -c >> telescope_system.log.gz &
+nohup stdbuf -oL -eL ./radio_telescope.sh 2>&1 | stdbuf -oL -eL gzip -c >> telescope_system.log.gz &

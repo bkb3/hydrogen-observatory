@@ -14,6 +14,46 @@ function freqToVelocity(freqMHz) {
     return C_KMS * ((HYDROGEN_LINE_MHZ - freqMHz) / HYDROGEN_LINE_MHZ);
 }
 
+async function fetchAndDecompress(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`File '${url}' not found.`);
+
+    if (!url.endsWith(".gz")) {
+        return await response.text();
+    }
+
+    // 1. Initialize Pako's streaming Decompressor with multi-part support
+    const totalInflater = new pako.Inflate({ to: 'string', chunks: 16384 });
+    let decompressedText = "";
+
+    // Set up a listener: whenever pako finishes extracting a segment, capture it
+    totalInflater.onData = (chunk) => {
+        decompressedText += chunk;
+    };
+
+    // 2. Fetch the live binary reader stream from the network response
+    const reader = response.body.getReader();
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            // 3. Feed the raw chunk into Pako. 
+            // 'value' is a Uint8Array. we tell it 'false' so it knows the file isn't done yet.
+            totalInflater.push(value, false); 
+        }
+    } catch (err) {
+        console.warn("Stream read interrupted or trailing block unfinished (Normal for live files):", err);
+    }
+
+    // Flush out any remaining buffered data at the end of the file
+    totalInflater.push(new Uint8Array(0), true);
+
+    return decompressedText;
+}
+
+
 // 1. Single-bin spike filter
 function cleanSpikesFilter(powerArray) {
     if (powerArray.length < 5) return powerArray;
@@ -186,11 +226,12 @@ async function loadAndPlotData(forceReload = false) {
 
         const dateParts = dateInput.value.split("-");
         if (dateParts.length !== 3) return;
-        const targetPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen.dat`;
+        const targetPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen.dat.gz`;
 
-        const response = await fetch(targetPath);
-        if (!response.ok) throw new Error(`Observation file '${targetPath}' not found.`);
-        const rawText = await response.text();
+        // const response = await fetch(targetPath);
+        // if (!response.ok) throw new Error(`Observation file '${targetPath}' not found.`);
+        // const rawText = await response.text();
+        const rawText = await fetchAndDecompress(targetPath);
 
         let parsedBlocks = [];
         let currentFreqs = [], currentPowers = [], currentTimestamp = "";
@@ -826,9 +867,8 @@ async function fetchAndDisplayLog(filePath, logTitle) {
     modal.style.display = "flex";
 
     try {
-        const response = await fetch(filePath);
-        if (!response.ok) throw new Error(`Could not fetch log file at '${filePath}'.`);
-        const content = await response.text();
+        // Updated to use the decompression helper
+        const content = await fetchAndDecompress(filePath);
         modalBody.innerText = content || "(Log file is empty)";
     } catch (err) {
         modalBody.innerText = `Error: ${err.message}`;
@@ -841,7 +881,7 @@ function viewDailyScanLog() {
     const dateParts = dateInput.value.split("-");
     if (dateParts.length !== 3) return;
 
-    const logPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan_errors.log`;
+    const logPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan_errors.log.gz`;
     fetchAndDisplayLog(logPath, `Scan Log (${dateInput.value})`);
 }
 
