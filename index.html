@@ -30,10 +30,10 @@
         content="Interactive DSP spectrum analyzer and waterfall plot for neutral hydrogen drift scans, mapping galactic rotation and Doppler velocities." />
     <meta name="twitter:image" content="https://bkb3.github.io/hydrogen-observatory/preview-thumbnail.png" />
     <title>Milky Way Hydrogen Line Radio Telescope Observatory</title>
-    <script src="chart.js"></script>
-    <script src="pako.min.js"></script>
-    <script src="21cm.js"></script>
-    <link rel="stylesheet" href="21cm.css">
+    <script src="static/chart.js"></script>
+    <script src="static/pako.min.js"></script>
+    <script src="static/21cm.js"></script>
+    <link rel="stylesheet" href="static/21cm.css">
 </head>
 
 <body>
@@ -54,7 +54,8 @@
                     <label for="waterfallToggleCheck">🔥 Heatmap</label>
                 </div>
                 <button class="btn-secondary"
-                    onclick="fetchAndDisplayLog('telescope_system.log.gz', 'System Log (shell script)')">📋 System
+                    onclick="viewDailyScanLog('telescope_system.log', 'System Log (shell script)')"
+                    title="View telescope runtime log for selected date">📋 System
                     Log</button>
                 <button onclick="loadAndPlotData(true)">🔄 Force Refresh</button>
             </div>
@@ -66,8 +67,9 @@
                 <span class="param-item"><strong>Pointing:</strong> Az 180°, El 30°</span>
                 <span class="param-item"><strong>Location:</strong> Lat 27.68° N</span>
                 <span class="param-item"><strong>Rest Freq:</strong> 1420.4058 MHz</span>
-                <span class="param-item"><strong>Offset tune Freq:</strong> 1420.7 MHz</span>
-                <span class="param-item"><strong>Integration time:</strong> 10 mins</span>
+                <span class="param-item"><strong>Offset tune Freq:</strong> <span id="tunedFreqVal">--</span></span>
+                <span class="param-item"><strong>Integration time:</strong> <span
+                        id="integrationTimeVal">--</span></span>
             </div>
             <div class="params-group">
                 <span class="param-item" style="color: #2563eb; font-weight: 600;">Drift Scan Mode</span>
@@ -91,7 +93,8 @@
             <button class="btn-secondary" onclick="stepFrame(-1)" title="Previous Frame">⏮️ Back</button>
             <button id="playPauseBtn" onclick="togglePlayback()" title="Play / Pause Filter Loop">▶️ Play</button>
             <button class="btn-secondary" onclick="stepFrame(1)" title="Next Frame">⏭️ Next</button>
-            <button class="btn-secondary" onclick="viewDailyScanLog()" title="View scan_errors.log for selected date">📜
+            <button class="btn-secondary" onclick="viewDailyScanLog('scan.log', 'System Log (shell script)')"
+                title="View scan log for selected date">📜
                 Scan Log</button>
         </div>
 
@@ -116,7 +119,7 @@
 
         <div class="chart-container">
             <div class="waterfall-header">
-                <span class="waterfall-title">Power spectrum</span>
+                <span class="waterfall-title">⚡ Power spectrum</span>
                 <span style="font-size: 11px; color: #64748b;">Blue (0 dB) ──► Yellow/Red (+3 dB Peak)</span>
             </div>
             <div class="chart-wrapper">
@@ -126,33 +129,20 @@
 
         <div class="waterfall-card" id="waterfallContainer">
             <div class="waterfall-header">
-                <span class="waterfall-title">Spectrogram Waterfall (Time vs Frequency Intensity)</span>
+                <span class="waterfall-title">🌊 Spectrogram Waterfall (Time vs Frequency Intensity)</span>
                 <span style="font-size: 11px; color: #64748b;">Blue (0 dB) ──► Yellow/Red (+3 dB Peak)</span>
             </div>
 
             <div class="canvas-wrapper">
 
                 <!-- Top Velocity Ticks (km/s) -->
-                <div class="waterfall-ticks-top">
-                    <span style="left: 0%; transform: translateX(0%);">+71 km/s</span>
-                    <span style="left: 25%;">+42 km/s</span>
-                    <span style="left: 50%;">+13 km/s</span>
-                    <span style="left: 61.05%; color: #ef4444; font-weight: bold;">0 km/s</span>
-                    <span style="left: 75%;">-16 km/s</span>
-                    <span style="left: 100%; transform: translateX(-100%);">-45 km/s</span>
-                </div>
+                <div class="waterfall-ticks-top"></div>
 
                 <!-- Spectrogram Canvas -->
                 <canvas id="waterfallCanvas" style="width: 100%; display: block;"></canvas>
 
                 <!-- Bottom Frequency Ticks (MHz) -->
-                <div class="waterfall-ticks-bottom">
-                    <span style="left: 0%; transform: translateX(0%);">1420.070 Mhz</span>
-                    <span style="left: 25%;">1420.208</span>
-                    <span style="left: 50%;">1420.345</span>
-                    <span style="left: 75%;">1420.482</span>
-                    <span style="left: 100%; transform: translateX(-100%);">1420.620 Mhz</span>
-                </div>
+                <div class="waterfall-ticks-bottom"></div>
             </div>
         </div>
 
@@ -160,12 +150,31 @@
         <div id="rotationCard" style="margin-top: 16px;">
             <div class="chart-container">
                 <div class="waterfall-header">
-                    <span class="waterfall-title">🌌 Milky Way Rotation Curve (24h Tangent Method)</span>
+                    <span class="waterfall-title">🌌 Milky Way Rotation Curve (24h Tangent Method) [ ⚠️ Beta ⚠️ ]</span>
                     <span style="font-size: 11px; color: #64748b;">Flat ~220 km/s plateau demonstrates Dark
                         Matter</span>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="rotationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2D Galactic Hydrogen Density Map Container -->
+        <div id="galacticMapCard" style="margin-top: 16px;">
+            <div class="chart-container">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">🗺️ 2D Milky Way Neutral Hydrogen (HI) Density Map [🏗️ Alpha 🚧]</span>
+                    <span style="font-size: 11px; color: #64748b;">Top-down Galactic plane projection (Sun at X: 0, Y:
+                        8.5 kpc)</span>
+                </div>
+                <div class="map-canvas-wrapper">
+                    <canvas id="galacticMapCanvas" width="600" height="600"></canvas>
+                </div>
+                <div class="map-legend">
+                    <span class="legend-text">Min Signal Power</span>
+                    <div class="gradient-bar"></div>
+                    <span class="legend-text">Max Signal Power</span>
                 </div>
             </div>
         </div>

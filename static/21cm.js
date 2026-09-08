@@ -7,12 +7,64 @@ let currentFrameIndex = 0;
 let globalBlocksCache = [];
 
 const HYDROGEN_LINE_MHZ = 1420.4058;
+//const minFreqMHzFilter = 1420.1200;
+//const maxFreqMHzFilter = 1420.6915;
+
+const minFreqMHzFilter = 1420.070;
+const maxFreqMHzFilter = 1420.62;
 
 // Radio Doppler velocity conversion (km/s)
 function freqToVelocity(freqMHz) {
     const C_KMS = 299792.458;
     return C_KMS * ((HYDROGEN_LINE_MHZ - freqMHz) / HYDROGEN_LINE_MHZ);
 }
+
+function updateWaterfallTicks(minFreqMHz = minFreqMHzFilter, maxFreqMHz = maxFreqMHzFilter) {
+    const topTicksEl = document.querySelector(".waterfall-ticks-top");
+    const bottomTicksEl = document.querySelector(".waterfall-ticks-bottom");
+    if (!topTicksEl || !bottomTicksEl) return;
+
+    const steps = [0, 0.25, 0.5, 0.75, 1.0];
+    let topHTML = "";
+    let bottomHTML = "";
+
+    const hasRestLine = HYDROGEN_LINE_MHZ >= minFreqMHz && HYDROGEN_LINE_MHZ <= maxFreqMHz;
+    const zeroPct = hasRestLine ? ((HYDROGEN_LINE_MHZ - minFreqMHz) / (maxFreqMHz - minFreqMHz)) * 100 : null;
+
+    steps.forEach((pct) => {
+        const pctPos = pct * 100;
+
+        // Skip rendering regular tick if within 5% of rest line to avoid overlap
+        const isNearZeroLine = zeroPct !== null && Math.abs(pctPos - zeroPct) < 5;
+
+        const freq = minFreqMHz + pct * (maxFreqMHz - minFreqMHz);
+        const vel = freqToVelocity(freq);
+
+        let transformStyle = "transform: translateX(-50%);";
+        if (pct === 0) transformStyle = "transform: translateX(0%);";
+        else if (pct === 1) transformStyle = "transform: translateX(-100%);";
+
+        const formattedVel = Math.round(vel);
+        const velNum = (formattedVel > 0 ? "+" : "") + formattedVel;
+        const velLabel = (pct === 0 || pct === 1) ? `${velNum} km/s` : velNum;
+        const freqLabel = (pct === 0 || pct === 1) ? `${freq.toFixed(3)} MHz` : freq.toFixed(3);
+
+        if (!isNearZeroLine) {
+            topHTML += `<span style="left: ${pctPos}%; ${transformStyle}">${velLabel}</span>`;
+        }
+
+        bottomHTML += `<span style="left: ${pctPos}%; ${transformStyle}">${freqLabel}</span>`;
+    });
+
+    // Exact 0 km/s rest frequency tick mark aligned with HI Rest line
+    if (hasRestLine) {
+        topHTML += `<span style="left: ${zeroPct.toFixed(2)}%; color: #ef4444; font-weight: bold; transform: translateX(-50%);">0</span>`;
+    }
+
+    topTicksEl.innerHTML = topHTML;
+    bottomTicksEl.innerHTML = bottomHTML;
+}
+
 
 async function fetchAndDecompress(url) {
     const response = await fetch(url);
@@ -41,7 +93,7 @@ async function fetchAndDecompress(url) {
 
             // 3. Feed the raw chunk into Pako. 
             // 'value' is a Uint8Array. we tell it 'false' so it knows the file isn't done yet.
-            totalInflater.push(value, false); 
+            totalInflater.push(value, false);
         }
     } catch (err) {
         console.warn("Stream read interrupted or trailing block unfinished (Normal for live files):", err);
@@ -53,6 +105,54 @@ async function fetchAndDecompress(url) {
     return decompressedText;
 }
 
+async function fetchAndParseScanLog(dateParts) {
+    const basePath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan.log`;
+    const logMetricsMap = new Map();
+
+    try {
+        const logText = await fetchAndDecompress(`${basePath}.gz`)
+            .catch(() => fetchAndDecompress(basePath))
+            .catch(() => ""); // Graceful fallback if no log file exists yet
+
+        let pendingFreq = null;
+        let pendingIntegration = null;
+
+        for (let line of logText.split("\n")) {
+            line = line.trim();
+
+            if (line.includes("Device tuned to:")) {
+                const match = line.match(/Device tuned to:\s*(\d+)\s*Hz/i);
+                if (match) {
+                    pendingFreq = (parseFloat(match[1]) / 1e6).toFixed(4) + " MHz";
+                }
+            }
+
+            if (line.includes("Estimated time of measurements:") || line.includes("Effective integration time:")) {
+                const match = line.match(/(?:Estimated time of measurements|Effective integration time):\s*([\d.]+)\s*seconds/i);
+                if (match) {
+                    const totalSeconds = parseFloat(match[1]);
+                    pendingIntegration = totalSeconds >= 60
+                        ? `${Math.round(totalSeconds / 60)} mins`
+                        : `${Math.round(totalSeconds)} secs`;
+                }
+            }
+
+            if (line.includes("Acquisition started at")) {
+                const timeMatch = line.match(/Acquisition started at\s+(.+)$/i);
+                if (timeMatch) {
+                    logMetricsMap.set(timeMatch[1].trim(), {
+                        tunedFreq: pendingFreq || "N/A",
+                        integrationTime: pendingIntegration || "N/A"
+                    });
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Could not parse scan log metrics:", err);
+    }
+
+    return logMetricsMap; // Always returns a valid Map object
+}
 
 // 1. Single-bin spike filter
 function cleanSpikesFilter(powerArray) {
@@ -117,61 +217,68 @@ function solveCubicSystem(matrixA, vectorB) {
     return solution;
 }
 
-// 3. Fit 3rd-degree polynomial and return raw, fitted baseline, and corrected arrays
-function processBaseline(frequencies, powers) {
-    let len = powers.length;
+// 3. Fit 3rd-degree polynomial (ModPoly) and return raw, fitted baseline, and corrected arrays
+function processBaseline(frequencies, powers, iterations = 5) {
+    const len = powers.length;
+    if (len === 0) return { fittedBaseline: [], correctedPowers: [] };
+
     let centerFreq = frequencies[Math.floor(len / 2)];
+    let activePowers = [...powers];
+    let finalBaseline = new Array(len);
 
-    let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0, s6 = 0;
-    let sy = 0, sxy = 0, sx2y = 0, sx3y = 0;
+    for (let iter = 0; iter < iterations; iter++) {
+        // Build matrices only on non-clipped noise values
+        let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0, s6 = 0;
+        let sy = 0, sxy = 0, sx2y = 0, sx3y = 0;
 
-    for (let i = 0; i < len; i++) {
-        let f = frequencies[i];
+        for (let i = 0; i < len; i++) {
+            let x = frequencies[i] - centerFreq;
+            let y = activePowers[i];
+            let x2 = x * x, x3 = x2 * x;
 
-        if (f >= 1420.20 && f <= 1420.43) continue;
+            s0 += 1; s1 += x; s2 += x2; s3 += x3;
+            s4 += x3 * x; s5 += x3 * x2; s6 += x3 * x3;
 
-        let x = f - centerFreq;
-        let y = powers[i];
-        let x2 = x * x;
-        let x3 = x2 * x;
+            sy += y; sxy += x * y; sx2y += x2 * y; sx3y += x3 * y;
+        }
 
-        s0 += 1;
-        s1 += x;
-        s2 += x2;
-        s3 += x3;
-        s4 += x3 * x;
-        s5 += x3 * x2;
-        s6 += x3 * x3;
+        let matrixA = [
+            [s6, s5, s4, s3],
+            [s5, s4, s3, s2],
+            [s4, s3, s2, s1],
+            [s3, s2, s1, s0]
+        ];
+        let vectorB = [sx3y, sx2y, sxy, sy];
 
-        sy += y;
-        sxy += x * y;
-        sx2y += x2 * y;
-        sx3y += x3 * y;
+        let [a, b, c, d] = solveCubicSystem(matrixA, vectorB);
+
+        // Compute fitted baseline for this iteration
+        for (let i = 0; i < len; i++) {
+            let x = frequencies[i] - centerFreq;
+            finalBaseline[i] = a * Math.pow(x, 3) + b * x * x + c * x + d;
+        }
+
+        // Calculate standard deviation of residual noise
+        let diffs = powers.map((p, idx) => p - finalBaseline[idx]);
+        let mean = diffs.reduce((sum, val) => sum + val, 0) / len;
+        let stdDev = Math.sqrt(diffs.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / len);
+
+        // Clip anything higher than baseline + 1.5 * stdDev so broad HI peaks don't pull the curve up
+        for (let i = 0; i < len; i++) {
+            if (powers[i] > finalBaseline[i] + (1.5 * stdDev)) {
+                activePowers[i] = finalBaseline[i];
+            } else {
+                activePowers[i] = powers[i];
+            }
+        }
     }
 
-    let fittedBaseline = new Array(len);
     let correctedPowers = new Array(len);
-
-    if (s0 < 4) return { fittedBaseline: powers, correctedPowers: powers };
-
-    let matrixA = [
-        [s6, s5, s4, s3],
-        [s5, s4, s3, s2],
-        [s4, s3, s2, s1],
-        [s3, s2, s1, s0]
-    ];
-    let vectorB = [sx3y, sx2y, sxy, sy];
-
-    let [a, b, c, d] = solveCubicSystem(matrixA, vectorB);
-
     for (let i = 0; i < len; i++) {
-        let x = frequencies[i] - centerFreq;
-        let baseVal = a * Math.pow(x, 3) + b * x * x + c * x + d;
-        fittedBaseline[i] = baseVal;
-        correctedPowers[i] = powers[i] - baseVal;
+        correctedPowers[i] = powers[i] - finalBaseline[i];
     }
 
-    return { fittedBaseline, correctedPowers };
+    return { fittedBaseline: finalBaseline, correctedPowers };
 }
 
 // 4. Smart Boxcar Peak Finder with SNR Check
@@ -226,12 +333,14 @@ async function loadAndPlotData(forceReload = false) {
 
         const dateParts = dateInput.value.split("-");
         if (dateParts.length !== 3) return;
-        const targetPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen.dat.gz`;
 
-        // const response = await fetch(targetPath);
-        // if (!response.ok) throw new Error(`Observation file '${targetPath}' not found.`);
-        // const rawText = await response.text();
-        const rawText = await fetchAndDecompress(targetPath);
+        // 1. Fetch data file and log map concurrently
+        const basePath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen`;
+
+        const [rawText, logFreqMap] = await Promise.all([
+            fetchAndDecompress(`${basePath}.dat.gz`).catch(() => fetchAndDecompress(`${basePath}.dat`)),
+            fetchAndParseScanLog(dateParts)
+        ]);
 
         let parsedBlocks = [];
         let currentFreqs = [], currentPowers = [], currentTimestamp = "";
@@ -242,13 +351,15 @@ async function loadAndPlotData(forceReload = false) {
 
             if (line.startsWith("# Acquisition start:")) {
                 if (currentFreqs.length > 0) {
-                    // Pre-calculate baseline fit once per block
                     let cleaned = cleanSpikesFilter(currentPowers);
                     let { fittedBaseline, correctedPowers } = processBaseline(currentFreqs, cleaned);
                     let metrics = calculateSmartMetrics(currentFreqs, correctedPowers);
+                    const logData = logFreqMap.get(currentTimestamp);
 
                     parsedBlocks.push({
                         time: currentTimestamp,
+                        tunedFreq: logData?.tunedFreq ?? "N/A",
+                        integrationTime: logData?.integrationTime ?? "N/A",
                         freqs: currentFreqs,
                         powers: currentPowers,
                         cleanedPowers: cleaned,
@@ -268,7 +379,7 @@ async function loadAndPlotData(forceReload = false) {
             if (tokens.length === 2) {
                 const freqMHz = parseFloat(tokens[0]) / 1e6;
                 const powerDB = parseFloat(tokens[1]);
-                if (!isNaN(freqMHz) && !isNaN(powerDB) && freqMHz >= 1420.070 && freqMHz <= 1420.62) {
+                if (!isNaN(freqMHz) && !isNaN(powerDB) && freqMHz >= minFreqMHzFilter && freqMHz <= maxFreqMHzFilter) {
                     currentFreqs.push(freqMHz);
                     currentPowers.push(powerDB);
                 }
@@ -279,9 +390,12 @@ async function loadAndPlotData(forceReload = false) {
             let cleaned = cleanSpikesFilter(currentPowers);
             let { fittedBaseline, correctedPowers } = processBaseline(currentFreqs, cleaned);
             let metrics = calculateSmartMetrics(currentFreqs, correctedPowers);
+            const logData = logFreqMap.get(currentTimestamp);
 
             parsedBlocks.push({
                 time: currentTimestamp,
+                tunedFreq: logData?.tunedFreq ?? "N/A",
+                integrationTime: logData?.integrationTime ?? "N/A",
                 freqs: currentFreqs,
                 powers: currentPowers,
                 cleanedPowers: cleaned,
@@ -294,7 +408,7 @@ async function loadAndPlotData(forceReload = false) {
         if (parsedBlocks.length === 0) return;
 
         globalBlocksCache = parsedBlocks;
-        isWaterfallCached = false; // Triggers fresh heatmap build for new observations
+        isWaterfallCached = false;
 
         if (forceReload || document.getElementById("startTimeSelect").options.length === 0) {
             populateDropdownMenus(parsedBlocks.map((b) => b.time));
@@ -307,6 +421,7 @@ async function loadAndPlotData(forceReload = false) {
         renderSingleFrame(currentFrameIndex);
         renderWaterfallFull();
         renderRotationCurve();
+        renderGalactic2DMap();
     } catch (error) {
         console.error(error);
         alert(error.message);
@@ -330,6 +445,12 @@ function renderSingleFrame(frameIndex) {
     currentFrameIndex = frameIndex;
 
     let block = globalBlocksCache[frameIndex];
+
+    const freqEl = document.getElementById("tunedFreqVal");
+    if (freqEl) freqEl.textContent = block.tunedFreq;
+
+    const integrationEl = document.getElementById("integrationTimeVal");
+    if (integrationEl) integrationEl.textContent = block.integrationTime;
 
     document.getElementById("statBlocks").innerText = `Frame ${frameIndex + 1} of ${globalBlocksCache.length}`;
     document.getElementById("statTime").innerText = `${block.time.replace(/^\d{4}-\d{2}-\d{2}\s+/, "")}\n ${new Date(block.time).toLocaleTimeString([], { timeZoneName: 'short' })}`;
@@ -355,6 +476,10 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
     const minFreq = freqs[0];
     const maxFreq = freqs[freqs.length - 1];
 
+    const freqPadding = (maxFreq - minFreq) * 0.02;
+    const paddedMin = minFreq - freqPadding;
+    const paddedMax = maxFreq + freqPadding;
+
     if (myChart) {
         myChart.data.labels = freqs;
         myChart.data.datasets[0].data = correctedPowers;
@@ -365,10 +490,11 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
         myChart.data.datasets[2].hidden = !isOverlay;
         myChart.options.scales.y1.display = isOverlay;
 
-        myChart.options.scales.x1.min = minFreq;
-        myChart.options.scales.x1.max = maxFreq;
+        myChart.options.scales.x.min = paddedMin;
+        myChart.options.scales.x.max = paddedMax;
+        myChart.options.scales.x1.min = paddedMin;
+        myChart.options.scales.x1.max = paddedMax;
 
-        // myChart.options.plugins.title.text = `Timestamp: ${timestamp} (Local: ${new Date(timestamp).toLocaleString()})`;
         myChart.update();
         return;
     }
@@ -439,6 +565,8 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
                 x: {
                     type: "linear",
                     position: "bottom",
+                    min: minFreq - (maxFreq - minFreq) * 0.02,
+                    max: maxFreq + (maxFreq - minFreq) * 0.02,
                     title: { display: true, text: "Observed Frequency (MHz)", color: "#334155", font: { size: 12, weight: "bold" } },
                     grid: { color: "#f1f5f9" },
                     ticks: { color: "#475569", callback: (val) => val.toFixed(3) }
@@ -446,15 +574,16 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
                 x1: {
                     type: "linear",
                     position: "top",
-                    min: minFreq,
-                    max: maxFreq,
+                    min: minFreq - (maxFreq - minFreq) * 0.02,
+                    max: maxFreq + (maxFreq - minFreq) * 0.02,
                     title: { display: true, text: "Doppler Velocity (km/s)", color: "#2563eb", font: { size: 12, weight: "bold" } },
                     grid: { drawOnChartArea: false },
                     ticks: {
                         color: "#2563eb",
                         callback: function (freqVal) {
                             const velocity = freqToVelocity(freqVal);
-                            return `${velocity > 0 ? "+" : ""}${velocity.toFixed(0)} km/s`;
+                            if (Math.abs(velocity) < 0.5) return "0 km/s";
+                            return `${velocity > 0 ? "+" : ""}${Math.round(velocity)} km/s`;
                         }
                     }
                 },
@@ -476,7 +605,6 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
             },
             plugins: {
                 legend: { display: true, position: "top", align: "end" },
-                // title: { display: true, text: `Timestamp: ${timestamp} (Local: ${new Date(timestamp).toLocaleString()})`, color: "#0f172a", font: { size: 13, weight: "bold" } },
                 tooltip: {
                     callbacks: {
                         title: function (tooltipItems) {
@@ -487,9 +615,7 @@ function renderChart(freqs, rawPowers, baselinePowers, correctedPowers, timestam
                         afterTitle: function (tooltipItems) {
                             if (!tooltipItems.length) return '';
                             const freq = tooltipItems[0].parsed.x;
-                            const c = 299792.458;
-                            const fRest = 1420.4058;
-                            const velocity = c * ((fRest - freq) / fRest);
+                            const velocity = freqToVelocity(freq);
                             const sign = velocity > 0 ? "+" : "";
                             return `Velocity: ${sign}${velocity.toFixed(2)} km/s`;
                         }
@@ -626,23 +752,33 @@ function getGalacticLongitude(timestampStr) {
 
     if (isNaN(utcDate.getTime())) return null;
 
+    // 1. Calculate Julian Date and Local Sidereal Time (LST) at Lon 84.43° E
     let jd = (utcDate.getTime() / 86400000) + 2440587.5;
     let d = jd - 2451545.0;
-    let lst = (280.46061837 + 360.98564736629 * d + 84.43) % 360;
-    if (lst < 0) lst += 360;
+    let gmst = (280.46061837 + 360.98564736629 * d) % 360;
+    let lstDeg = (gmst + 84.43) % 360;
+    if (lstDeg < 0) lstDeg += 360;
 
-    let ra = lst * (Math.PI / 180);
-    let dec = -32.32 * (Math.PI / 180);
+    // 2. Fixed Antenna Geometry: Az 180° (South), El 30°, Lat 27.68° N
+    // For Az 180°: Declination = Latitude + Elevation - 90°
+    const latRad = 27.68 * (Math.PI / 180);
+    const elRad = 30.0 * (Math.PI / 180);
+    const decRad = Math.asin(Math.sin(latRad) * Math.sin(elRad) - Math.cos(latRad) * Math.cos(elRad)); // dec = -32.32°
 
-    let raNGP = 192.85948 * (Math.PI / 180);
-    let decNGP = 27.12825 * (Math.PI / 180);
-    let lNCP = 122.93200 * (Math.PI / 180);
+    // Hour Angle (HA = 0° when pointing due South)
+    const haRad = 0;
+    const raRad = (lstDeg * (Math.PI / 180)) - haRad;
 
-    let sinb = Math.sin(dec) * Math.sin(decNGP) + Math.cos(dec) * Math.cos(decNGP) * Math.cos(ra - raNGP);
+    // 3. Convert Equatorial (RA, Dec) to Galactic Coordinates (l, b)
+    const raNGP = 192.85948 * (Math.PI / 180);
+    const decNGP = 27.12825 * (Math.PI / 180);
+    const lNCP = 122.93200 * (Math.PI / 180);
+
+    let sinb = Math.sin(decRad) * Math.sin(decNGP) + Math.cos(decRad) * Math.cos(decNGP) * Math.cos(raRad - raNGP);
     let b = Math.asin(sinb) * (180 / Math.PI);
 
-    let y = Math.cos(dec) * Math.sin(ra - raNGP);
-    let x = Math.sin(dec) * Math.cos(decNGP) - Math.cos(dec) * Math.sin(decNGP) * Math.cos(ra - raNGP);
+    let y = Math.cos(decRad) * Math.sin(raRad - raNGP);
+    let x = Math.sin(decRad) * Math.cos(decNGP) - Math.cos(decRad) * Math.sin(decNGP) * Math.cos(raRad - raNGP);
     let l = (lNCP - Math.atan2(y, x)) * (180 / Math.PI);
     if (l < 0) l += 360;
 
@@ -652,8 +788,8 @@ function getGalacticLongitude(timestampStr) {
 function renderRotationCurve() {
     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
 
-    const R0 = 8.5;
-    const V0 = 220.0;
+    const R0 = 8.5;       // Solar distance from Galactic Center (kpc)
+    const V0 = 220.0;     // Solar orbital speed (km/s)
     const c = 299792.458;
     const fRest = 1420.4058;
 
@@ -669,14 +805,16 @@ function renderRotationCurve() {
         let b_rad = b_deg * (Math.PI / 180);
         let sinL = Math.sin(l_rad);
 
-        if (Math.abs(sinL) < 0.15) return;
+        // 1. STRICT SINE MASK: Rejection region around Center/Anticenter (l near 0°, 180°, 360°)
+        // Division by sin(l) becomes unstable when |sin(l)| < 0.35 (l within ~20° of center line)
+        if (Math.abs(sinL) < 0.35) return;
 
-        // Use pre-computed correctedPowers directly
+        // IAU Solar Motion Correction
+        let v_solar_corr = 11.1 * Math.cos(l_rad) * Math.cos(b_rad) +
+            12.24 * Math.sin(l_rad) * Math.cos(b_rad) +
+            7.25 * Math.sin(b_rad);
+
         let correctedPowers = block.correctedPowers;
-
-        let v_solar_corr = 9.0 * Math.cos(l_rad) * Math.cos(b_rad) +
-            12.0 * Math.sin(l_rad) * Math.cos(b_rad) +
-            7.0 * Math.sin(b_rad);
 
         let maxP = -999;
         for (let i = 0; i < block.freqs.length; i++) {
@@ -685,38 +823,48 @@ function renderRotationCurve() {
             }
         }
 
-        if (maxP > 0.02) {
-            let maxV_LSR = null;
+        if (maxP > 0.005) {
+            let weightedV_sum = 0;
+            let weightSum = 0;
 
             for (let i = 0; i < block.freqs.length; i++) {
                 if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
+
+                // Weight channels above 20% peak power
                 if (correctedPowers[i] >= maxP * 0.20) {
                     let v_raw = c * ((fRest - block.freqs[i]) / fRest);
                     let v_lsr = v_raw + v_solar_corr;
+                    let w = correctedPowers[i];
 
-                    if (maxV_LSR === null || Math.abs(v_lsr) > Math.abs(maxV_LSR)) {
-                        maxV_LSR = v_lsr;
-                    }
+                    weightedV_sum += v_lsr * w;
+                    weightSum += w;
                 }
             }
 
-            if (maxV_LSR !== null) {
+            if (weightSum > 0) {
+                let v_centroid = weightedV_sum / weightSum;
                 let R, V_R;
 
-                if ((l_deg > 15 && l_deg < 82) || (l_deg > 278 && l_deg < 345)) {
+                // 2. DUAL-REGION GALACTIC GEOMETRY
+                let isInnerGalaxy = (l_deg > 20 && l_deg < 80) || (l_deg > 280 && l_deg < 340);
+
+                if (isInnerGalaxy) {
+                    // Inner Galaxy (R <= R0)
                     R = R0 * Math.abs(sinL);
-                    V_R = maxV_LSR + V0 * Math.abs(sinL);
+                    V_R = (v_centroid / sinL) + V0;
                 } else {
-                    let denom = V0 * sinL - maxV_LSR;
-                    if (Math.abs(denom) > 1.0) {
-                        R = Math.abs(R0 * (V0 * sinL) / denom);
-                    } else {
-                        R = R0 + 1.0;
+                    // Outer Galaxy (R > R0) — Quadrants II & III
+                    // Standard Kinematic Distance Model assuming flat rotation (V(R) ~ V0)
+                    let denom = (v_centroid / V0) + sinL;
+                    if (Math.abs(denom) > 0.05) {
+                        R = Math.abs(R0 * sinL / denom);
+                        // Reconstruct orbital speed
+                        V_R = (v_centroid + V0 * sinL) * (R / (R0 * sinL));
                     }
-                    V_R = Math.abs(maxV_LSR + V0 * sinL);
                 }
 
-                if (R >= 1.5 && R <= 18.0 && V_R >= 160 && V_R <= 260) {
+                // 3. PHYSICAL BOUNDS & SANITY FILTER
+                if (R && R >= 2.0 && R <= 16.0 && V_R >= 150 && V_R <= 250) {
                     points.push({
                         x: parseFloat(R.toFixed(2)),
                         y: parseFloat(V_R.toFixed(1)),
@@ -727,8 +875,8 @@ function renderRotationCurve() {
         }
     });
 
+    // Bin points into 0.25 kpc increments
     let binMap = {};
-
     points.forEach(p => {
         let roundedR = (Math.round(p.x * 4) / 4).toFixed(2);
         if (!binMap[roundedR]) {
@@ -739,40 +887,46 @@ function renderRotationCurve() {
         binMap[roundedR].count += 1;
     });
 
-    let binnedPoints = [];
+    // Write to local variable to PREVENT DOUBLE-BINNING BUG
+    let finalBinnedPoints = [];
     for (let r in binMap) {
         let avgV = binMap[r].vSum / binMap[r].count;
         let midL = binMap[r].lList[Math.floor(binMap[r].lList.length / 2)];
-
-        binnedPoints.push({
+        finalBinnedPoints.push({
             x: parseFloat(r),
             y: parseFloat(avgV.toFixed(1)),
             l: midL
         });
     }
+    finalBinnedPoints.sort((a, b) => a.x - b.x);
 
-    points = binnedPoints;
-    points.sort((a, b) => a.x - b.x);
+    // Clean up extreme velocity outliers that jump too far from local neighbor trends
+    let cleanPoints = finalBinnedPoints.filter((p, i, arr) => {
+        if (i === 0) return true;
+        let prev = arr[i - 1];
+        // Reject points that jump by more than 35 km/s within a tiny distance step (<= 0.5 kpc)
+        if (Math.abs(p.x - prev.x) <= 0.5 && Math.abs(p.y - prev.y) > 35) {
+            return false;
+        }
+        return true;
+    });
 
-    // Theoretical Models tuned to your observational baseline
+    // Theoretical Models
     let flatModel = [];
     let keplerianModel = [];
-
-    const R_scale = 2.2;     // Smooth curve fit for the inner disk
-    const R_disk_edge = 8.0; // Peak Keplerian decay at Solar Circle (R0)
+    const R_scale = 2.2;
+    const R_disk_edge = 8.0;
 
     for (let r = 1.0; r <= 17.5; r += 0.5) {
-        // Flat Model (Dark Matter Halo Present)
+        // Flat Model (With Dark Matter)
         let vFlat = 220.0 * (1.0 - Math.exp(-r / R_scale));
         flatModel.push({ x: r, y: parseFloat(vFlat.toFixed(1)) });
 
-        // Keplerian Model (No Dark Matter - Visible Disk Only)
+        // Keplerian Model (No Dark Matter - Exponential Disk Falloff)
         let vKepler;
         if (r <= R_disk_edge) {
-            // Solid-body interior rotation up to R0
-            vKepler = 220.0 * (r / R_disk_edge);
+            vKepler = 220.0 * Math.sqrt(1.0 - Math.exp(-r / R_scale));
         } else {
-            // Keplerian falloff past the visible disk boundary
             vKepler = 220.0 * Math.sqrt(R_disk_edge / r);
         }
         keplerianModel.push({ x: r, y: parseFloat(vKepler.toFixed(1)) });
@@ -783,7 +937,7 @@ function renderRotationCurve() {
     const ctx = canvas.getContext("2d");
 
     if (rotationChart) {
-        rotationChart.data.datasets[0].data = points;
+        rotationChart.data.datasets[0].data = cleanPoints;
         rotationChart.data.datasets[1].data = flatModel;
         rotationChart.data.datasets[2].data = keplerianModel;
         rotationChart.update();
@@ -796,7 +950,7 @@ function renderRotationCurve() {
             datasets: [
                 {
                     label: "Observed HI Data V(R)",
-                    data: points,
+                    data: cleanPoints,
                     backgroundColor: "#2563eb",
                     borderColor: "#1d4ed8",
                     pointRadius: 4,
@@ -830,14 +984,10 @@ function renderRotationCurve() {
                 x: {
                     type: "linear",
                     position: "bottom",
-                    title: { display: true, text: "Galactocentric Distance R (kpc)", color: "#334155", font: { weight: "bold" } },
-                    // min: 0,
-                    // max: 18
+                    title: { display: true, text: "Galactocentric Distance R (kpc)", color: "#334155", font: { weight: "bold" } }
                 },
                 y: {
-                    title: { display: true, text: "Orbital Speed V(R) (km/s)", color: "#1e3a8a", font: { weight: "bold" } },
-                    // min: 100,
-                    // max: 300
+                    title: { display: true, text: "Orbital Speed V(R) (km/s)", color: "#1e3a8a", font: { weight: "bold" } }
                 }
             },
             plugins: {
@@ -855,6 +1005,207 @@ function renderRotationCurve() {
     });
 }
 
+
+function renderGalactic2DMap() {
+    const canvas = document.getElementById("galacticMapCanvas");
+    if (!canvas || !globalBlocksCache || globalBlocksCache.length === 0) return;
+    const ctx = canvas.getContext("2d");
+
+    const wrapper = canvas.parentElement;
+    const displaySize = Math.min(wrapper.clientWidth || 300, wrapper.clientHeight || 300);
+
+    // 1. High-DPI Canvas Scaling
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(displaySize * dpr);
+    canvas.height = Math.floor(displaySize * dpr);
+    canvas.style.width = `${displaySize}px`;
+    canvas.style.height = `${displaySize}px`;
+
+    ctx.resetTransform();
+    ctx.scale(dpr, dpr);
+
+    const width = displaySize;
+    const height = displaySize;
+    const scale = width / 30.0; // 30x30 kpc viewport
+    const cx = width / 2;       // Galactic Center (0,0)
+    const cy = height / 2;      // Sun at (0, 8.5 kpc)
+
+    const R0 = 8.5;             // Sun-Galactic Center distance (kpc)
+    const V0 = 220.0;           // Solar orbital speed (km/s)
+    const c = 299792.458;
+    const fRest = 1420.4058;
+
+    // 2. Draw Background & Grid
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    // Minor Cartesian Grid
+    ctx.strokeStyle = "#f1f5f9";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= width; x += 5 * scale) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, x); ctx.lineTo(width, x); ctx.stroke();
+    }
+
+    // Concentric Radius Rings
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.setLineDash([4, 4]);
+    [4.0, 8.5, 12.0].forEach(r => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "9px monospace";
+        ctx.fillText(`R=${r}kpc`, cx + 4, cy - (r * scale) - 3);
+    });
+    ctx.setLineDash([]);
+
+    // Crosshairs
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(width, cy); ctx.stroke();
+
+    // 3. Grid Accumulation Setup
+    const gridSize = 150;
+    const rawGrid = Array.from({ length: gridSize }, () => new Float32Array(gridSize));
+
+    function addPowerToGrid(x_kpc, y_kpc, power) {
+        let gx = Math.floor(((x_kpc + 15.0) / 30.0) * gridSize);
+        let gy = Math.floor(((y_kpc + 15.0) / 30.0) * gridSize);
+        if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
+            rawGrid[gy][gx] += power;
+        }
+    }
+
+    // 4. Data Processing
+    globalBlocksCache.forEach((block) => {
+        let coords = getGalacticLongitude(block.time);
+        if (!coords) return;
+
+        let l_deg = coords.l;
+        let b_deg = coords.b || 0;
+        let l_rad = l_deg * (Math.PI / 180);
+        let b_rad = b_deg * (Math.PI / 180);
+        let sinL = Math.sin(l_rad);
+        let cosL = Math.cos(l_rad);
+
+        // Mask Singularity Zone (|l| < 15° and |l - 180°| < 15°)
+        if (Math.abs(sinL) < 0.25) return;
+
+        let v_solar_corr = 11.1 * Math.cos(l_rad) * Math.cos(b_rad) +
+            12.24 * Math.sin(l_rad) * Math.cos(b_rad) +
+            7.25 * Math.sin(b_rad);
+
+        let correctedPowers = block.correctedPowers;
+        let maxP = -999;
+        for (let i = 0; i < block.freqs.length; i++) {
+            if (block.freqs[i] >= 1420.15 && block.freqs[i] <= 1420.50) {
+                if (correctedPowers[i] > maxP) maxP = correctedPowers[i];
+            }
+        }
+
+        if (maxP < 0.005) return;
+
+        for (let i = 0; i < block.freqs.length; i++) {
+            if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
+
+            let power = correctedPowers[i];
+            if (power < maxP * 0.15) continue;
+
+            let v_raw = c * ((fRest - block.freqs[i]) / fRest);
+            let v_lsr = v_raw + v_solar_corr;
+
+            let R = (R0 * V0 * sinL) / (v_lsr + V0 * sinL);
+            if (isNaN(R) || R <= 0.5 || R > 16.0) continue;
+
+            let cosVal = R0 * cosL;
+            let discriminant = cosVal * cosVal - (R0 * R0 - R * R);
+            if (discriminant < 0) continue;
+
+            let sqrtDisc = Math.sqrt(discriminant);
+            let d1 = cosVal - sqrtDisc;
+            let d2 = cosVal + sqrtDisc;
+
+            // Handle Quadrant Ambiguity for Inner Galaxy (R < R0)
+            if (R < R0 && d1 > 0 && d2 > 0) {
+                addPowerToGrid(d1 * sinL, R0 - d1 * cosL, power * 0.5);
+                addPowerToGrid(d2 * sinL, R0 - d2 * cosL, power * 0.5);
+            } else {
+                let d = (d1 > 0) ? d1 : d2;
+                if (d > 0 && d <= 20.0) {
+                    addPowerToGrid(d * sinL, R0 - d * cosL, power);
+                }
+            }
+        }
+    });
+
+    // 5. Balanced Gaussian Kernel Smoothing (Fills gaps without over-blurring)
+    const grid = Array.from({ length: gridSize }, () => new Float32Array(gridSize));
+    let maxDensity = 0;
+
+    for (let y = 1; y < gridSize - 1; y++) {
+        for (let x = 1; x < gridSize - 1; x++) {
+            let val = rawGrid[y][x] * 0.36 +
+                (rawGrid[y-1][x] + rawGrid[y+1][x] + rawGrid[y][x-1] + rawGrid[y][x+1]) * 0.11 +
+                (rawGrid[y-1][x-1] + rawGrid[y-1][x+1] + rawGrid[y+1][x-1] + rawGrid[y+1][x+1]) * 0.05;
+
+            grid[y][x] = val;
+            if (val > maxDensity) maxDensity = val;
+        }
+    }
+
+    // Viridis Color Mapping
+    function getViridisColor(val) {
+        if (val <= 0 || maxDensity === 0) return null;
+        let norm = Math.min(val / (maxDensity * 0.55), 1.0);
+
+        let r = Math.floor(68 + norm * (253 - 68));
+        let g = Math.floor(1 + Math.sin(norm * Math.PI) * 180 + norm * 50);
+        let b = Math.floor(84 + (1 - norm) * 100 - norm * 50);
+
+        return `rgb(${Math.min(r, 253)}, ${Math.min(g, 231)}, ${Math.max(b, 37)})`;
+    }
+
+    // 6. Smooth Heatmap Rendering Pipeline
+    // ctx.save();
+    // Native canvas blur replaces discrete dots with continuous fluid density
+    // ctx.filter = "blur(3px)";
+
+    // 6. Connected Heatmap Renderer
+    const cellSize = width / gridSize;
+    for (let gy = 0; gy < gridSize; gy++) {
+        for (let gx = 0; gx < gridSize; gx++) {
+            let val = grid[gy][gx];
+            // Low threshold restores full arm continuity without background noise
+            if (val > maxDensity * 0.008) {
+                let color = getViridisColor(val);
+                if (color) {
+                    ctx.fillStyle = color;
+                    // Slight 0.5px overlap connects neighboring bins seamlessly
+                    ctx.fillRect(gx * cellSize, gy * cellSize, cellSize + 0.5, cellSize + 0.5);
+                }
+            }
+        }
+    }
+    // ctx.restore(); // Removes blur filter so text and axes stay crisp
+
+    // 7. Astronomical Annotations (Drawn Crisp After Restore)
+    // Galactic Center
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fill();
+    ctx.font = "bold 10px system-ui";
+    ctx.fillText("Galactic Center (0,0)", cx + 8, cy + 3);
+
+    // Sun Position
+    let sunX = cx;
+    let sunY = cy - (R0 * scale);
+    ctx.fillStyle = "#2563eb";
+    ctx.beginPath(); ctx.arc(sunX, sunY, 4, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = "#1e40af";
+    ctx.fillText("Sun (0, 8.5 kpc)", sunX + 8, sunY + 3);
+}
+
 // --- Log Handlers ---
 
 async function fetchAndDisplayLog(filePath, logTitle) {
@@ -867,22 +1218,43 @@ async function fetchAndDisplayLog(filePath, logTitle) {
     modal.style.display = "flex";
 
     try {
-        // Updated to use the decompression helper
         const content = await fetchAndDecompress(filePath);
         modalBody.innerText = content || "(Log file is empty)";
+        return content;
     } catch (err) {
-        modalBody.innerText = `Error: ${err.message}`;
+        // Rethrow so the caller's .catch() block knows this fetch failed!
+        throw err;
     }
 }
 
-function viewDailyScanLog() {
+function viewDailyScanLog(fileName = "scan.log", logTitleOverride = null) {
     const dateInput = document.getElementById("obsDateInput");
-    if (!dateInput.value) return;
+    if (!dateInput?.value) return;
     const dateParts = dateInput.value.split("-");
     if (dateParts.length !== 3) return;
 
-    const logPath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan_errors.log.gz`;
-    fetchAndDisplayLog(logPath, `Scan Log (${dateInput.value})`);
+    const baseLogName = fileName.replace(/\.gz$/, '');
+    const displayTitle = logTitleOverride || `${baseLogName} (${dateInput.value})`;
+
+    // Check if file is a root system log vs daily observation log
+    const isSystemLog = baseLogName.includes("telescope_system") || baseLogName.includes("server_web");
+
+    // System logs live at root; daily logs live in YYYY/MM/DD/
+    const basePath = isSystemLog
+        ? baseLogName
+        : `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/${baseLogName}`;
+
+    // 1. Try .gz path first
+    fetchAndDisplayLog(`${basePath}.gz`, displayTitle)
+        // 2. Fall back to raw file
+        .catch(() => fetchAndDisplayLog(basePath, displayTitle))
+        // 3. Handle failure if neither exists
+        .catch((err) => {
+            const modalBody = document.getElementById("logModalBody");
+            if (modalBody) {
+                modalBody.innerText = `Error loading log: File not found.\nAttempted paths:\n- ${basePath}.gz\n- ${basePath}`;
+            }
+        });
 }
 
 function closeLogModal() {
@@ -956,4 +1328,5 @@ window.addEventListener("resize", () => {
 // Initial Load
 document.addEventListener("DOMContentLoaded", () => {
     loadAndPlotData(false);
+    updateWaterfallTicks(minFreqMHzFilter, maxFreqMHzFilter);
 });
