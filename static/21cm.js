@@ -409,6 +409,7 @@ async function loadAndPlotData(forceReload = false) {
 
         globalBlocksCache = parsedBlocks;
         isWaterfallCached = false;
+        cachedMappedPoints = null;
 
         if (forceReload || document.getElementById("startTimeSelect").options.length === 0) {
             populateDropdownMenus(parsedBlocks.map((b) => b.time));
@@ -421,7 +422,7 @@ async function loadAndPlotData(forceReload = false) {
         renderSingleFrame(currentFrameIndex);
         renderWaterfallFull();
         renderRotationCurve();
-        renderGalactic2DMap();
+
     } catch (error) {
         console.error(error);
         alert(error.message);
@@ -465,6 +466,8 @@ function renderSingleFrame(frameIndex) {
 
     // Pass pre-cached arrays directly into Chart.js (instant render)
     renderChart(block.freqs, block.cleanedPowers, block.fittedBaseline, block.correctedPowers, block.time);
+    renderGalactic2DMap(true);
+    drawTelescopeLineOfSight(block.time);
 
     if (document.getElementById("waterfallToggleCheck").checked) {
         renderWaterfallFull();
@@ -752,20 +755,15 @@ function getGalacticLongitude(timestampStr) {
 
     if (isNaN(utcDate.getTime())) return null;
 
-    // 1. Calculate Julian Date and Local Sidereal Time (LST) at Lon 84.43° E
+    // 1. Calculate Julian Date and Local Sidereal Time (LST) at Lon 84.43Â° E
     let jd = (utcDate.getTime() / 86400000) + 2440587.5;
     let d = jd - 2451545.0;
     let gmst = (280.46061837 + 360.98564736629 * d) % 360;
     let lstDeg = (gmst + 84.43) % 360;
     if (lstDeg < 0) lstDeg += 360;
 
-    // 2. Fixed Antenna Geometry: Az 180° (South), El 30°, Lat 27.68° N
-    // For Az 180°: Declination = Latitude + Elevation - 90°
-    const latRad = 27.68 * (Math.PI / 180);
-    const elRad = 30.0 * (Math.PI / 180);
-    const decRad = Math.asin(Math.sin(latRad) * Math.sin(elRad) - Math.cos(latRad) * Math.cos(elRad)); // dec = -32.32°
-
-    // Hour Angle (HA = 0° when pointing due South)
+    // 2. Fixed Antenna Geometry: Az 180Â° (South), El 30Â°, Lat 27.68Â° N
+    const decRad = -32.32 * (Math.PI / 180);
     const haRad = 0;
     const raRad = (lstDeg * (Math.PI / 180)) - haRad;
 
@@ -775,15 +773,20 @@ function getGalacticLongitude(timestampStr) {
     const lNCP = 122.93200 * (Math.PI / 180);
 
     let sinb = Math.sin(decRad) * Math.sin(decNGP) + Math.cos(decRad) * Math.cos(decNGP) * Math.cos(raRad - raNGP);
-    let b = Math.asin(sinb) * (180 / Math.PI);
+    let b = Math.asin(Math.max(-1, Math.min(1, sinb))) * (180 / Math.PI);
 
     let y = Math.cos(decRad) * Math.sin(raRad - raNGP);
     let x = Math.sin(decRad) * Math.cos(decNGP) - Math.cos(decRad) * Math.sin(decNGP) * Math.cos(raRad - raNGP);
-    let l = (lNCP - Math.atan2(y, x)) * (180 / Math.PI);
-    if (l < 0) l += 360;
+
+    // Robust non-wrapping modulo for 0Â° - 360Â° range
+    let l = (lNCP * (180 / Math.PI) - Math.atan2(y, x) * (180 / Math.PI));
+    l = (l % 360 + 360) % 360;
 
     return { l, b };
 }
+
+// --- Global Telescope Line-of-Sight Pointer ---
+
 
 function renderRotationCurve() {
     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
@@ -805,8 +808,8 @@ function renderRotationCurve() {
         let b_rad = b_deg * (Math.PI / 180);
         let sinL = Math.sin(l_rad);
 
-        // 1. STRICT SINE MASK: Rejection region around Center/Anticenter (l near 0°, 180°, 360°)
-        // Division by sin(l) becomes unstable when |sin(l)| < 0.35 (l within ~20° of center line)
+        // 1. STRICT SINE MASK: Rejection region around Center/Anticenter (l near 0Â°, 180Â°, 360Â°)
+        // Division by sin(l) becomes unstable when |sin(l)| < 0.35 (l within ~20Â° of center line)
         if (Math.abs(sinL) < 0.35) return;
 
         // IAU Solar Motion Correction
@@ -853,7 +856,7 @@ function renderRotationCurve() {
                     R = R0 * Math.abs(sinL);
                     V_R = (v_centroid / sinL) + V0;
                 } else {
-                    // Outer Galaxy (R > R0) — Quadrants II & III
+                    // Outer Galaxy (R > R0) â€” Quadrants II & III
                     // Standard Kinematic Distance Model assuming flat rotation (V(R) ~ V0)
                     let denom = (v_centroid / V0) + sinL;
                     if (Math.abs(denom) > 0.05) {
@@ -996,7 +999,7 @@ function renderRotationCurve() {
                     callbacks: {
                         label: (ctx) => {
                             if (ctx.dataset.type === "line") return `${ctx.dataset.label}: ${ctx.parsed.y} km/s`;
-                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}°)`;
+                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}Â°)`;
                         }
                     }
                 }
@@ -1006,15 +1009,222 @@ function renderRotationCurve() {
 }
 
 
-function renderGalactic2DMap() {
+// --- Global Telescope Line-of-Sight Pointer ---
+function drawTelescopeLineOfSight(timestampStr = null) {
+    const canvas = document.getElementById("galacticMapCanvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    // Reconstruct canvas coordinate metrics
+    const displaySize = parseFloat(canvas.style.width) || canvas.width;
+    const width = displaySize;
+    const height = displaySize;
+    const scale = width / 30.0;
+    const cx = width / 2;
+    const cy = height / 2;
+    const R0 = 8.5;
+
+    // Use provided frame timestamp or fall back to current frame cache
+    let time = timestampStr;
+    if (!time && globalBlocksCache.length > 0 && globalBlocksCache[currentFrameIndex]) {
+        time = globalBlocksCache[currentFrameIndex].time;
+    }
+    if (!time) time = new Date().toISOString();
+
+    // 1. Calculate galactic pointing coordinates
+    const galactic = getGalacticLongitude(time);
+    if (!galactic || galactic.l === null) return;
+
+    let lDeg = galactic.l;
+    let lRad = lDeg * (Math.PI / 180);
+
+    // 2. Map Line of Sight directly to renderGalactic2DMap Cartesian System:
+    // x = d * sin(l), y = R0 - d * cos(l)
+    let sunX = cx;
+    let sunY = cy - (R0 * scale);
+    let rayLength = 25.0; // kpc
+
+    // Target position matching exact projection of renderGalactic2DMap
+    let targetX = sunX + (rayLength * Math.sin(lRad)) * scale;
+    let targetY = sunY + (rayLength * Math.cos(lRad)) * scale;
+
+    // 3. Draw Dashed Pointer Line
+    ctx.save();
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(sunX, sunY);
+    ctx.lineTo(targetX, targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 4. Clamped Label Bounds
+    ctx.fillStyle = "#dc2626";
+    ctx.font = "bold 10px system-ui";
+
+    const labelText = `Pointing (Az 180Â°, El 30Â° | l=${lDeg.toFixed(1)}Â° | time=${time.split(" ")[1]} UTC)`;
+    const textMetrics = ctx.measureText(labelText);
+    const textWidth = textMetrics.width;
+    const padding = 10;
+
+    let labelX = Math.max(padding, Math.min(targetX - textWidth / 2, width - textWidth - padding));
+    let labelY = targetY < sunY ? targetY - 8 : targetY + 16;
+    labelY = Math.max(padding + 10, Math.min(labelY, height - padding));
+
+    ctx.fillText(labelText, labelX, labelY);
+    ctx.restore();
+}
+
+
+// 2D map using hydrogen density of milkyway
+// Offscreen Sprite Cache for Viridis Blobs 
+const viridisSprites = [];
+const SPRITE_SIZE = 16; // Diameter in pixels
+const NUM_BINS = 10;    // 10 Viridis power steps
+
+function initViridisSprites() {
+    if (viridisSprites.length > 0) return;
+
+    for (let i = 0; i < NUM_BINS; i++) {
+        const normVal = i / (NUM_BINS - 1);
+        const offCanvas = document.createElement("canvas");
+        offCanvas.width = SPRITE_SIZE;
+        offCanvas.height = SPRITE_SIZE;
+        const offCtx = offCanvas.getContext("2d");
+
+        const radius = SPRITE_SIZE / 2;
+        const alpha = 0.15 + normVal * 0.45;
+
+        // Generate Viridis colors
+        const coreColor = getViridisColor(normVal, alpha);
+        const edgeColor = getViridisColor(normVal, 0);
+
+        const grad = offCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+        grad.addColorStop(0, coreColor);
+        grad.addColorStop(1, edgeColor);
+
+        offCtx.fillStyle = grad;
+        offCtx.beginPath();
+        offCtx.arc(radius, radius, radius, 0, 2 * Math.PI);
+        offCtx.fill();
+
+        viridisSprites.push(offCanvas);
+    }
+}
+
+// Viridis Helper
+function getViridisColor(normalizedVal, alpha) {
+    const t = Math.min(Math.max(normalizedVal, 0.0), 1.0);
+    const c0 = [68, 1, 84], c1 = [59, 82, 139], c2 = [33, 145, 140], c3 = [94, 201, 98], c4 = [253, 231, 37];
+    let r, g, b;
+
+    if (t < 0.25) {
+        let n = t / 0.25;
+        r = c0[0] + n * (c1[0] - c0[0]); g = c0[1] + n * (c1[1] - c0[1]); b = c0[2] + n * (c1[2] - c0[2]);
+    } else if (t < 0.5) {
+        let n = (t - 0.25) / 0.25;
+        r = c1[0] + n * (c2[0] - c1[0]); g = c1[1] + n * (c2[1] - c1[1]); b = c1[2] + n * (c2[2] - c1[2]);
+    } else if (t < 0.75) {
+        let n = (t - 0.5) / 0.25;
+        r = c2[0] + n * (c3[0] - c2[0]); g = c2[1] + n * (c3[1] - c2[1]); b = c2[2] + n * (c3[2] - c2[2]);
+    } else {
+        let n = (t - 0.75) / 0.25;
+        r = c3[0] + n * (c4[0] - c3[0]); g = c3[1] + n * (c4[1] - c3[1]); b = c3[2] + n * (c4[2] - c3[2]);
+    }
+
+    return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${alpha})`;
+}
+
+// Pre-calculated Global Point Cache
+let cachedMappedPoints = null;
+let cachedMaxPower = 0.001;
+
+function updateGalacticPointsCache() {
+    cachedMappedPoints = [];
+    cachedMaxPower = 0.001;
+
+    const R0 = 8.5, V0 = 220.0, c = 299792.458, fRest = 1420.4058;
+
+    globalBlocksCache.forEach((block) => {
+        const coords = getGalacticLongitude(block.time);
+        if (!coords) return;
+
+        const l_deg = coords.l, b_deg = coords.b || 0;
+        const l_rad = l_deg * (Math.PI / 180), b_rad = b_deg * (Math.PI / 180);
+        const sinL = Math.sin(l_rad), cosL = Math.cos(l_rad);
+
+        if (Math.abs(sinL) < 0.05) return;
+
+        const v_solar_corr = 11.1 * Math.cos(l_rad) * Math.cos(b_rad) +
+            12.24 * Math.sin(l_rad) * Math.cos(b_rad) +
+            7.25 * Math.sin(b_rad);
+
+        const correctedPowers = block.correctedPowers;
+        let blockMaxP = -999;
+        for (let i = 0; i < block.freqs.length; i++) {
+            if (block.freqs[i] >= 1420.15 && block.freqs[i] <= 1420.50) {
+                if (correctedPowers[i] > blockMaxP) blockMaxP = correctedPowers[i];
+            }
+        }
+
+        if (blockMaxP < 0.005) return;
+
+        // Skip noise below 20% threshold to reduce overall point count
+        const noiseCutoff = blockMaxP * 0.20;
+
+        for (let i = 0; i < block.freqs.length; i++) {
+            if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
+
+            const power = correctedPowers[i];
+            if (power < noiseCutoff) continue;
+
+            const v_raw = c * ((fRest - block.freqs[i]) / fRest);
+            const v_lsr = v_raw + v_solar_corr;
+            const proj_factor = sinL * Math.cos(b_rad);
+
+            if (Math.abs(proj_factor) < 0.05) continue;
+
+            const R = (R0 * V0 * proj_factor) / (v_lsr + V0 * proj_factor);
+            if (isNaN(R) || R <= 0.5 || R > 16.0) continue;
+            if (R < 3.0 && Math.abs(v_lsr) < 15.0) continue;
+
+            const cosVal = R0 * cosL;
+            const discriminant = cosVal * cosVal - (R0 * R0 - R * R);
+            if (discriminant < 0) continue;
+
+            const sqrtDisc = Math.sqrt(discriminant);
+            const d1 = cosVal - sqrtDisc, d2 = cosVal + sqrtDisc;
+            const d = (R < R0) ? ((d2 > 0) ? d2 : d1) : ((d1 > 0) ? d1 : d2);
+
+            if (d > 0 && d <= 20.0) {
+                let x_phys = d * sinL;
+                let y_phys = R0 - d * cosL;
+
+                if (l_deg > 180) x_phys = -Math.abs(x_phys);
+
+                if (power > cachedMaxPower) cachedMaxPower = power;
+                cachedMappedPoints.push({ x: x_phys, y: y_phys, weight: power });
+            }
+        }
+    });
+}
+
+// 2. High-Speed Render Function
+function renderGalactic2DMap(forceRecalculate = false) {
     const canvas = document.getElementById("galacticMapCanvas");
     if (!canvas || !globalBlocksCache || globalBlocksCache.length === 0) return;
     const ctx = canvas.getContext("2d");
 
+    initViridisSprites();
+
+    if (forceRecalculate || !cachedMappedPoints) {
+        updateGalacticPointsCache();
+    }
+
     const wrapper = canvas.parentElement;
     const displaySize = Math.min(wrapper.clientWidth || 300, wrapper.clientHeight || 300);
 
-    // 1. High-DPI Canvas Scaling
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(displaySize * dpr);
     canvas.height = Math.floor(displaySize * dpr);
@@ -1026,20 +1236,15 @@ function renderGalactic2DMap() {
 
     const width = displaySize;
     const height = displaySize;
-    const scale = width / 30.0; // 30x30 kpc viewport
-    const cx = width / 2;       // Galactic Center (0,0)
-    const cy = height / 2;      // Sun at (0, 8.5 kpc)
+    const scale = width / 30.0;
+    const cx = width / 2;
+    const cy = height / 2;
+    const R0 = 8.5;
 
-    const R0 = 8.5;             // Sun-Galactic Center distance (kpc)
-    const V0 = 220.0;           // Solar orbital speed (km/s)
-    const c = 299792.458;
-    const fRest = 1420.4058;
-
-    // 2. Draw Background & Grid
+    // Static Background & Grids
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
-    // Minor Cartesian Grid
     ctx.strokeStyle = "#f1f5f9";
     ctx.lineWidth = 1;
     for (let x = 0; x <= width; x += 5 * scale) {
@@ -1047,164 +1252,80 @@ function renderGalactic2DMap() {
         ctx.beginPath(); ctx.moveTo(0, x); ctx.lineTo(width, x); ctx.stroke();
     }
 
-    // Concentric Radius Rings
     ctx.strokeStyle = "#cbd5e1";
-    ctx.setLineDash([4, 4]);
     [4.0, 8.5, 12.0].forEach(r => {
         ctx.beginPath();
         ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fillStyle = "#94a3b8";
-        ctx.font = "9px monospace";
+        ctx.font = "bold 9px monospace";
         ctx.fillText(`R=${r}kpc`, cx + 4, cy - (r * scale) - 3);
     });
-    ctx.setLineDash([]);
 
-    // Crosshairs
-    ctx.strokeStyle = "#94a3b8";
-    ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, height); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(width, cy); ctx.stroke();
 
-    // 3. Grid Accumulation Setup
-    const gridSize = 150;
-    const rawGrid = Array.from({ length: gridSize }, () => new Float32Array(gridSize));
+    // Fast Point Blitting using Offscreen Sprites
+    const spriteSize = Math.max(6, 1.3 * scale);
+    const halfSprite = spriteSize / 2;
 
-    function addPowerToGrid(x_kpc, y_kpc, power) {
-        let gx = Math.floor(((x_kpc + 15.0) / 30.0) * gridSize);
-        let gy = Math.floor(((y_kpc + 15.0) / 30.0) * gridSize);
-        if (gx >= 0 && gx < gridSize && gy >= 0 && gy < gridSize) {
-            rawGrid[gy][gx] += power;
-        }
+    cachedMappedPoints.sort((a, b) => a.weight - b.weight);
+
+    for (let i = 0; i < cachedMappedPoints.length; i++) {
+        const pt = cachedMappedPoints[i];
+        const px = cx + (pt.x * scale) - halfSprite;
+        const py = cy - (pt.y * scale) - halfSprite;
+
+        const normPower = Math.min(Math.max(pt.weight / cachedMaxPower, 0), 1);
+        const binIndex = Math.min(Math.floor(normPower * NUM_BINS), NUM_BINS - 1);
+
+        // Hardware-accelerated image draw call
+        ctx.drawImage(viridisSprites[binIndex], px, py, spriteSize, spriteSize);
     }
 
-    // 4. Data Processing
-    globalBlocksCache.forEach((block) => {
-        let coords = getGalacticLongitude(block.time);
-        if (!coords) return;
-
-        let l_deg = coords.l;
-        let b_deg = coords.b || 0;
-        let l_rad = l_deg * (Math.PI / 180);
-        let b_rad = b_deg * (Math.PI / 180);
-        let sinL = Math.sin(l_rad);
-        let cosL = Math.cos(l_rad);
-
-        // Mask Singularity Zone (|l| < 15° and |l - 180°| < 15°)
-        if (Math.abs(sinL) < 0.25) return;
-
-        let v_solar_corr = 11.1 * Math.cos(l_rad) * Math.cos(b_rad) +
-            12.24 * Math.sin(l_rad) * Math.cos(b_rad) +
-            7.25 * Math.sin(b_rad);
-
-        let correctedPowers = block.correctedPowers;
-        let maxP = -999;
-        for (let i = 0; i < block.freqs.length; i++) {
-            if (block.freqs[i] >= 1420.15 && block.freqs[i] <= 1420.50) {
-                if (correctedPowers[i] > maxP) maxP = correctedPowers[i];
-            }
-        }
-
-        if (maxP < 0.005) return;
-
-        for (let i = 0; i < block.freqs.length; i++) {
-            if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
-
-            let power = correctedPowers[i];
-            if (power < maxP * 0.15) continue;
-
-            let v_raw = c * ((fRest - block.freqs[i]) / fRest);
-            let v_lsr = v_raw + v_solar_corr;
-
-            let R = (R0 * V0 * sinL) / (v_lsr + V0 * sinL);
-            if (isNaN(R) || R <= 0.5 || R > 16.0) continue;
-
-            let cosVal = R0 * cosL;
-            let discriminant = cosVal * cosVal - (R0 * R0 - R * R);
-            if (discriminant < 0) continue;
-
-            let sqrtDisc = Math.sqrt(discriminant);
-            let d1 = cosVal - sqrtDisc;
-            let d2 = cosVal + sqrtDisc;
-
-            // Handle Quadrant Ambiguity for Inner Galaxy (R < R0)
-            if (R < R0 && d1 > 0 && d2 > 0) {
-                addPowerToGrid(d1 * sinL, R0 - d1 * cosL, power * 0.5);
-                addPowerToGrid(d2 * sinL, R0 - d2 * cosL, power * 0.5);
-            } else {
-                let d = (d1 > 0) ? d1 : d2;
-                if (d > 0 && d <= 20.0) {
-                    addPowerToGrid(d * sinL, R0 - d * cosL, power);
-                }
-            }
-        }
-    });
-
-    // 5. Balanced Gaussian Kernel Smoothing (Fills gaps without over-blurring)
-    const grid = Array.from({ length: gridSize }, () => new Float32Array(gridSize));
-    let maxDensity = 0;
-
-    for (let y = 1; y < gridSize - 1; y++) {
-        for (let x = 1; x < gridSize - 1; x++) {
-            let val = rawGrid[y][x] * 0.36 +
-                (rawGrid[y-1][x] + rawGrid[y+1][x] + rawGrid[y][x-1] + rawGrid[y][x+1]) * 0.11 +
-                (rawGrid[y-1][x-1] + rawGrid[y-1][x+1] + rawGrid[y+1][x-1] + rawGrid[y+1][x+1]) * 0.05;
-
-            grid[y][x] = val;
-            if (val > maxDensity) maxDensity = val;
-        }
-    }
-
-    // Viridis Color Mapping
-    function getViridisColor(val) {
-        if (val <= 0 || maxDensity === 0) return null;
-        let norm = Math.min(val / (maxDensity * 0.55), 1.0);
-
-        let r = Math.floor(68 + norm * (253 - 68));
-        let g = Math.floor(1 + Math.sin(norm * Math.PI) * 180 + norm * 50);
-        let b = Math.floor(84 + (1 - norm) * 100 - norm * 50);
-
-        return `rgb(${Math.min(r, 253)}, ${Math.min(g, 231)}, ${Math.max(b, 37)})`;
-    }
-
-    // 6. Smooth Heatmap Rendering Pipeline
-    // ctx.save();
-    // Native canvas blur replaces discrete dots with continuous fluid density
-    // ctx.filter = "blur(3px)";
-
-    // 6. Connected Heatmap Renderer
-    const cellSize = width / gridSize;
-    for (let gy = 0; gy < gridSize; gy++) {
-        for (let gx = 0; gx < gridSize; gx++) {
-            let val = grid[gy][gx];
-            // Low threshold restores full arm continuity without background noise
-            if (val > maxDensity * 0.008) {
-                let color = getViridisColor(val);
-                if (color) {
-                    ctx.fillStyle = color;
-                    // Slight 0.5px overlap connects neighboring bins seamlessly
-                    ctx.fillRect(gx * cellSize, gy * cellSize, cellSize + 0.5, cellSize + 0.5);
-                }
-            }
-        }
-    }
-    // ctx.restore(); // Removes blur filter so text and axes stay crisp
-
-    // 7. Astronomical Annotations (Drawn Crisp After Restore)
-    // Galactic Center
+    // Overlays
     ctx.fillStyle = "#0f172a";
-    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.fill();
     ctx.font = "bold 10px system-ui";
     ctx.fillText("Galactic Center (0,0)", cx + 8, cy + 3);
 
-    // Sun Position
-    let sunX = cx;
-    let sunY = cy - (R0 * scale);
+    const sunX = cx;
+    const sunY = cy - (R0 * scale);
     ctx.fillStyle = "#2563eb";
     ctx.beginPath(); ctx.arc(sunX, sunY, 4, 0, 2 * Math.PI); ctx.fill();
     ctx.fillStyle = "#1e40af";
     ctx.fillText("Sun (0, 8.5 kpc)", sunX + 8, sunY + 3);
+
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    let cygX = cx + (3.0 * scale);
+    let cygY = cy - (10.0 * scale);
+    ctx.arc(cygX, cygY, 12, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#475569";
+    ctx.font = "9px system-ui";
+    ctx.fillText("Cygnus / Local Gas", cygX + 15, cygY + 3);
+
+    ctx.lineWidth = 1.5;
+    ctx.font = "bold 11px system-ui";
+
+    ctx.strokeStyle = "rgba(219, 39, 119, 0.4)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10.5 * scale, Math.PI * 0.75, Math.PI * 1.35);
+    ctx.stroke();
+    ctx.fillStyle = "#db2777";
+    ctx.fillText("Perseus Arm", cx - (12.5 * scale), cy + (2.0 * scale));
+
+    ctx.strokeStyle = "rgba(5, 150, 105, 0.4)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6.0 * scale, Math.PI * 0.55, Math.PI * 0.95);
+    ctx.stroke();
+    ctx.fillStyle = "#059669";
+    ctx.fillText("Local / Sagittarius Arm", cx - (7.0 * scale), cy + (7.0 * scale));
 }
+
 
 // --- Log Handlers ---
 
@@ -1288,14 +1409,14 @@ function togglePlayback() {
     if (isPlaying) {
         clearInterval(playbackIntervalId);
         isPlaying = false;
-        playBtn.innerText = "▶️ Play";
+        playBtn.innerText = "â–¶ï¸ Play";
     } else {
         if (startIdx >= endIdx) {
             alert("Start block must be before End block!");
             return;
         }
         isPlaying = true;
-        playBtn.innerText = "⏸️ Pause";
+        playBtn.innerText = "â¸ï¸ Pause";
         currentFrameIndex = startIdx;
 
         playbackIntervalId = setInterval(() => {
@@ -1304,7 +1425,7 @@ function togglePlayback() {
             if (currentFrameIndex > endIdx) {
                 clearInterval(playbackIntervalId);
                 isPlaying = false;
-                playBtn.innerText = "▶️ Play";
+                playBtn.innerText = "â–¶ï¸ Play";
             }
         }, 600);
     }
