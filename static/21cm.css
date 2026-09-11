@@ -132,6 +132,10 @@ button.btn-secondary:hover {
 }
 
 .filter-card {
+    top: 0;
+    z-index: 100;
+    position: sticky;
+    position: -webkit-sticky;
     background-color: #ffffff;
     padding: 12px;
     border-radius: 8px;
@@ -252,6 +256,7 @@ button.btn-secondary:hover {
     margin-bottom: 26px;
     background-color: #0f172a;
     border-radius: 4px;
+    border: 1px solid #cbd5e1;
     overflow: visible;
 }
 
@@ -382,6 +387,18 @@ canvas#waterfallCanvas {
     flex-grow: 1;
 }
 
+/* 🚨 Error Theme Modifier Classes */
+.modal-overlay.error-theme .modal-header {
+    background-color: #fee2e2; /* Soft red background */
+    color: #991b1b;            /* Dark red text */
+    border-bottom: 1px solid #fca5a5;
+}
+
+.modal-overlay.error-theme .modal-body {
+    color: #dc2626;
+    font-family: monospace; /* Makes stack traces easier to read */
+    white-space: pre-wrap;  /* Preserves line breaks in error messages */
+}
 
 @media (max-width: 640px) {
 
@@ -427,13 +444,13 @@ canvas#waterfallCanvas {
     /* Restrains height to prevent card overflow */
     margin: 8px auto;
     background-color: #ffffff;
-    /*border-radius: 6px;*/
-    /*border: 1px solid #cbd5e1;*/
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
     overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    /*box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);*/
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 canvas#galacticMapCanvas {

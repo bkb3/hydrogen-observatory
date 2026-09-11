@@ -54,7 +54,7 @@
                     <label for="waterfallToggleCheck">🔥 Heatmap</label>
                 </div>
                 <button class="btn-secondary"
-                    onclick="viewDailyScanLog('telescope_system.log', 'System Log (shell script)')"
+                    onclick="viewDailyScanLog('telescope_system.log', 'System Log')"
                     title="View telescope runtime log for selected date">📋 System
                     Log</button>
                 <button onclick="loadAndPlotData(true)">🔄 Force Refresh</button>
@@ -93,7 +93,7 @@
             <button class="btn-secondary" onclick="stepFrame(-1)" title="Previous Frame">⏮️ Back</button>
             <button id="playPauseBtn" onclick="togglePlayback()" title="Play / Pause Filter Loop">▶️ Play</button>
             <button class="btn-secondary" onclick="stepFrame(1)" title="Next Frame">⏭️ Next</button>
-            <button class="btn-secondary" onclick="viewDailyScanLog('scan.log', 'System Log (shell script)')"
+            <button class="btn-secondary" onclick="viewDailyScanLog('scan.log', 'Scan Log')"
                 title="View scan log for selected date">📜
                 Scan Log</button>
         </div>

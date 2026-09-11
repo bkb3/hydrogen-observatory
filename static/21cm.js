@@ -96,6 +96,7 @@ async function fetchAndDecompress(url) {
             totalInflater.push(value, false);
         }
     } catch (err) {
+        displayGlobalError("Error", error.message)
         console.warn("Stream read interrupted or trailing block unfinished (Normal for live files):", err);
     }
 
@@ -148,6 +149,7 @@ async function fetchAndParseScanLog(dateParts) {
             }
         }
     } catch (err) {
+        displayGlobalError("Error", error.message)
         console.warn("Could not parse scan log metrics:", err);
     }
 
@@ -335,11 +337,20 @@ async function loadAndPlotData(forceReload = false) {
         if (dateParts.length !== 3) return;
 
         // 1. Fetch data file and log map concurrently
-        const basePath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen`;
+        const basePath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/hydrogen.dat`;
 
         const [rawText, logFreqMap] = await Promise.all([
-            fetchAndDecompress(`${basePath}.dat.gz`).catch(() => fetchAndDecompress(`${basePath}.dat`)),
-            fetchAndParseScanLog(dateParts)
+            // Target specific file-not-found / decompression errors
+            fetchAndDecompress(`${basePath}.gz`)
+                .catch(() => fetchAndDecompress(`${basePath}`))
+                .catch((err) => {
+                    // Throw custom formatted error to be caught by the main catch block
+                    throw new Error(`File not found or unreadable.\n\nAttempted paths:\n- ${basePath}.dat.gz\n- ${basePath}`);
+                }),
+            // Target missing scan log errors
+            fetchAndParseScanLog(dateParts).catch((err) => {
+                throw new Error(`Failed to parse scan log configuration for date (${dateInput.value}). Details: ${err.message || err}`);
+            })
         ]);
 
         let parsedBlocks = [];
@@ -424,8 +435,9 @@ async function loadAndPlotData(forceReload = false) {
         renderRotationCurve();
 
     } catch (error) {
-        console.error(error);
-        alert(error.message);
+        // console.error(error);
+        // alert(error.message);
+        displayGlobalError("Error", error.message)
     }
 }
 
@@ -755,14 +767,14 @@ function getGalacticLongitude(timestampStr) {
 
     if (isNaN(utcDate.getTime())) return null;
 
-    // 1. Calculate Julian Date and Local Sidereal Time (LST) at Lon 84.43Â° E
+    // 1. Calculate Julian Date and Local Sidereal Time (LST) at Lon 84.43° E
     let jd = (utcDate.getTime() / 86400000) + 2440587.5;
     let d = jd - 2451545.0;
     let gmst = (280.46061837 + 360.98564736629 * d) % 360;
     let lstDeg = (gmst + 84.43) % 360;
     if (lstDeg < 0) lstDeg += 360;
 
-    // 2. Fixed Antenna Geometry: Az 180Â° (South), El 30Â°, Lat 27.68Â° N
+    // 2. Fixed Antenna Geometry: Az 180° (South), El 30°, Lat 27.68° N
     const decRad = -32.32 * (Math.PI / 180);
     const haRad = 0;
     const raRad = (lstDeg * (Math.PI / 180)) - haRad;
@@ -778,7 +790,7 @@ function getGalacticLongitude(timestampStr) {
     let y = Math.cos(decRad) * Math.sin(raRad - raNGP);
     let x = Math.sin(decRad) * Math.cos(decNGP) - Math.cos(decRad) * Math.sin(decNGP) * Math.cos(raRad - raNGP);
 
-    // Robust non-wrapping modulo for 0Â° - 360Â° range
+    // Robust non-wrapping modulo for 0° - 360° range
     let l = (lNCP * (180 / Math.PI) - Math.atan2(y, x) * (180 / Math.PI));
     l = (l % 360 + 360) % 360;
 
@@ -804,12 +816,15 @@ function renderRotationCurve() {
 
         let l_deg = coords.l;
         let b_deg = coords.b || 0;
+
+        // Normalize longitude boundaries seamlessly to [0, 360)
+        l_deg = (l_deg % 360 + 360) % 360;
+
         let l_rad = l_deg * (Math.PI / 180);
         let b_rad = b_deg * (Math.PI / 180);
         let sinL = Math.sin(l_rad);
 
-        // 1. STRICT SINE MASK: Rejection region around Center/Anticenter (l near 0Â°, 180Â°, 360Â°)
-        // Division by sin(l) becomes unstable when |sin(l)| < 0.35 (l within ~20Â° of center line)
+        // 1. STRICT SINE MASK: Rejection region around Center/Anticenter
         if (Math.abs(sinL) < 0.35) return;
 
         // IAU Solar Motion Correction
@@ -848,29 +863,41 @@ function renderRotationCurve() {
                 let v_centroid = weightedV_sum / weightSum;
                 let R, V_R;
 
-                // 2. DUAL-REGION GALACTIC GEOMETRY
+                // 2. DUAL-REGION GALACTIC GEOMETRY (Fixed Outer Galaxy Circular Reference)
                 let isInnerGalaxy = (l_deg > 20 && l_deg < 80) || (l_deg > 280 && l_deg < 340);
+
+                let proj_factor = sinL * Math.cos(b_rad);
 
                 if (isInnerGalaxy) {
                     // Inner Galaxy (R <= R0)
                     R = R0 * Math.abs(sinL);
                     V_R = (v_centroid / sinL) + V0;
                 } else {
-                    // Outer Galaxy (R > R0) â€” Quadrants II & III
-                    // Standard Kinematic Distance Model assuming flat rotation (V(R) ~ V0)
-                    let denom = (v_centroid / V0) + sinL;
-                    if (Math.abs(denom) > 0.05) {
-                        R = Math.abs(R0 * sinL / denom);
-                        // Reconstruct orbital speed
-                        V_R = (v_centroid + V0 * sinL) * (R / (R0 * sinL));
+                    // Outer Galaxy (R > R0) - Geometrical Coordinate Translation Bypass
+                    let R_temp = (R0 * V0 * proj_factor) / (v_centroid + V0 * proj_factor);
+                    const cosL = Math.cos(l_rad);
+                    const discriminant = (R0 * cosL) * (R0 * cosL) - (R0 * R0 - R_temp * R_temp);
+
+                    if (discriminant >= 0) {
+                        const sqrtDisc = Math.sqrt(discriminant);
+                        const d1 = R0 * cosL - sqrtDisc;
+                        const d2 = R0 * cosL + sqrtDisc;
+                        const d = (d2 > 0) ? d2 : d1;
+
+                        if (d > 0 && d <= 20.0) {
+                            let x_phys = d * sinL;
+                            let y_phys = R0 - d * cosL;
+                            R = Math.sqrt(x_phys * x_phys + y_phys * y_phys);
+                            V_R = ((v_centroid / proj_factor) + V0) * (R / R0);
+                        }
                     }
                 }
 
                 // 3. PHYSICAL BOUNDS & SANITY FILTER
-                if (R && R >= 2.0 && R <= 16.0 && V_R >= 150 && V_R <= 250) {
+                if (R && R >= 2.0 && R <= 16.0 && V_R >= 130 && V_R <= 270) {
                     points.push({
                         x: parseFloat(R.toFixed(2)),
-                        y: parseFloat(V_R.toFixed(1)),
+                        y: parseFloat(Math.abs(V_R).toFixed(1)),
                         l: l_deg.toFixed(1)
                     });
                 }
@@ -907,7 +934,6 @@ function renderRotationCurve() {
     let cleanPoints = finalBinnedPoints.filter((p, i, arr) => {
         if (i === 0) return true;
         let prev = arr[i - 1];
-        // Reject points that jump by more than 35 km/s within a tiny distance step (<= 0.5 kpc)
         if (Math.abs(p.x - prev.x) <= 0.5 && Math.abs(p.y - prev.y) > 35) {
             return false;
         }
@@ -939,7 +965,8 @@ function renderRotationCurve() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    if (rotationChart) {
+    // Fix: Rely strictly on your exact local rotationChart reference mapping pointer
+    if (typeof rotationChart !== 'undefined' && rotationChart) {
         rotationChart.data.datasets[0].data = cleanPoints;
         rotationChart.data.datasets[1].data = flatModel;
         rotationChart.data.datasets[2].data = keplerianModel;
@@ -999,7 +1026,7 @@ function renderRotationCurve() {
                     callbacks: {
                         label: (ctx) => {
                             if (ctx.dataset.type === "line") return `${ctx.dataset.label}: ${ctx.parsed.y} km/s`;
-                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}Â°)`;
+                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}°)`;
                         }
                     }
                 }
@@ -1007,6 +1034,7 @@ function renderRotationCurve() {
         }
     });
 }
+
 
 
 // --- Global Telescope Line-of-Sight Pointer ---
@@ -1063,7 +1091,7 @@ function drawTelescopeLineOfSight(timestampStr = null) {
     ctx.fillStyle = "#dc2626";
     ctx.font = "bold 10px system-ui";
 
-    const labelText = `Pointing (Az 180Â°, El 30Â° | l=${lDeg.toFixed(1)}Â° | time=${time.split(" ")[1]} UTC)`;
+    const labelText = `Pointing (Az 180°, El 30° | l=${lDeg.toFixed(1)}° | time=${time.split(" ")[1]} UTC)`;
     const textMetrics = ctx.measureText(labelText);
     const textWidth = textMetrics.width;
     const padding = 10;
@@ -1146,46 +1174,83 @@ function updateGalacticPointsCache() {
 
     const R0 = 8.5, V0 = 220.0, c = 299792.458, fRest = 1420.4058;
 
+    // Hard absolute noise floor floor (prevents plotting completely empty space)
+    const ABSOLUTE_MIN_POWER = 0.05;
+
     globalBlocksCache.forEach((block) => {
+        if (!block.correctedPowers) return;
+
         const coords = getGalacticLongitude(block.time);
         if (!coords) return;
 
-        const l_deg = coords.l, b_deg = coords.b || 0;
+        let l_deg = coords.l, b_deg = coords.b || 0;
+        l_deg = (l_deg % 360 + 360) % 360;
+
         const l_rad = l_deg * (Math.PI / 180), b_rad = b_deg * (Math.PI / 180);
         const sinL = Math.sin(l_rad), cosL = Math.cos(l_rad);
 
-        if (Math.abs(sinL) < 0.05) return;
+        if (Math.abs(sinL) < 0.01) return;
+
+        // Calculate peak power locally for THIS BLOCK ONLY to preserve faint distant structures
+        let blockMaxPower = 0;
+        for (let i = 0; i < block.freqs.length; i++) {
+            if (block.freqs[i] >= 1420.15 && block.freqs[i] <= 1420.50) {
+                if (block.correctedPowers[i] > blockMaxPower) {
+                    blockMaxPower = block.correctedPowers[i];
+                }
+            }
+        }
+
+        const blockNoiseCutoff = Math.max(ABSOLUTE_MIN_POWER, blockMaxPower * 0.15);
 
         const v_solar_corr = 11.1 * Math.cos(l_rad) * Math.cos(b_rad) +
             12.24 * Math.sin(l_rad) * Math.cos(b_rad) +
             7.25 * Math.sin(b_rad);
 
         const correctedPowers = block.correctedPowers;
-        let blockMaxP = -999;
-        for (let i = 0; i < block.freqs.length; i++) {
-            if (block.freqs[i] >= 1420.15 && block.freqs[i] <= 1420.50) {
-                if (correctedPowers[i] > blockMaxP) blockMaxP = correctedPowers[i];
-            }
-        }
-
-        if (blockMaxP < 0.005) return;
-
-        // Skip noise below 20% threshold to reduce overall point count
-        const noiseCutoff = blockMaxP * 0.20;
 
         for (let i = 0; i < block.freqs.length; i++) {
             if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
 
             const power = correctedPowers[i];
-            if (power < noiseCutoff) continue;
 
-            const v_raw = c * ((fRest - block.freqs[i]) / fRest);
-            const v_lsr = v_raw + v_solar_corr;
-            const proj_factor = sinL * Math.cos(b_rad);
+            // Filter against our smart, block-adaptive threshold
+            if (power < blockNoiseCutoff) continue;
 
-            if (Math.abs(proj_factor) < 0.05) continue;
+            let v_raw = c * ((fRest - block.freqs[i]) / fRest);
+            let v_lsr = v_raw + v_solar_corr;
+            let proj_factor = sinL * Math.cos(b_rad);
 
-            const R = (R0 * V0 * proj_factor) / (v_lsr + V0 * proj_factor);
+            let R = (R0 * V0 * proj_factor) / (v_lsr + V0 * proj_factor);
+
+            // Handle inner galaxy inversion adaptations safely
+            if (R < R0) {
+                v_raw = -1 * c * ((fRest - block.freqs[i]) / fRest);
+                v_lsr = v_raw + v_solar_corr;
+                R = (R0 * V0 * proj_factor) / (v_lsr + V0 * proj_factor);
+            }
+
+            // =========================================================================
+            // Galactic center
+            // Only triggers if the radius calculation yields an inner-galaxy zone.
+            // This prevents far-side deep-space signals from getting swallowed!
+            // =========================================================================
+            const isNearGalacticCenterAxis = (l_deg < 15 || l_deg > 345);
+            const isRestFrequencyPeak = Math.abs(v_lsr) < 25.0;
+
+            if (isNearGalacticCenterAxis && isRestFrequencyPeak && (isNaN(R) || R < 2.5)) {
+                const angleSpread = Math.random() * 2.0 * Math.PI;
+                const distanceSpread = Math.random() * 0.6;
+
+                let x_phys = 0 + Math.cos(angleSpread) * distanceSpread;
+                let y_phys = 0 + Math.sin(angleSpread) * distanceSpread;
+
+                if (power > cachedMaxPower) cachedMaxPower = power;
+                cachedMappedPoints.push({ x: x_phys, y: y_phys, weight: power * 1.3 });
+                continue;
+            }
+            // =========================================================================
+
             if (isNaN(R) || R <= 0.5 || R > 16.0) continue;
             if (R < 3.0 && Math.abs(v_lsr) < 15.0) continue;
 
@@ -1195,13 +1260,12 @@ function updateGalacticPointsCache() {
 
             const sqrtDisc = Math.sqrt(discriminant);
             const d1 = cosVal - sqrtDisc, d2 = cosVal + sqrtDisc;
+
             const d = (R < R0) ? ((d2 > 0) ? d2 : d1) : ((d1 > 0) ? d1 : d2);
 
             if (d > 0 && d <= 20.0) {
                 let x_phys = d * sinL;
                 let y_phys = R0 - d * cosL;
-
-                if (l_deg > 180) x_phys = -Math.abs(x_phys);
 
                 if (power > cachedMaxPower) cachedMaxPower = power;
                 cachedMappedPoints.push({ x: x_phys, y: y_phys, weight: power });
@@ -1210,49 +1274,68 @@ function updateGalacticPointsCache() {
     });
 }
 
+
 // 2. High-Speed Render Function
+// Global tracking storage to monitor structural dimensions
+let _cachedParentWidth = 0;
+let _cachedParentHeight = 0;
+
 function renderGalactic2DMap(forceRecalculate = false) {
     const canvas = document.getElementById("galacticMapCanvas");
     if (!canvas || !globalBlocksCache || globalBlocksCache.length === 0) return;
     const ctx = canvas.getContext("2d");
 
-    initViridisSprites();
+    if (typeof initViridisSprites === "function") initViridisSprites();
 
     if (forceRecalculate || !cachedMappedPoints) {
         updateGalacticPointsCache();
     }
 
     const wrapper = canvas.parentElement;
-    const displaySize = Math.min(wrapper.clientWidth || 300, wrapper.clientHeight || 300);
+    const wWidth = wrapper.clientWidth || 300;
+    const wHeight = wrapper.clientHeight || 300;
+    const displaySize = Math.min(wWidth, wHeight);
+
+    // Prevent canvas buffer cache wipeouts. Only resize when layout physically shifts.
+    if (wWidth !== _cachedParentWidth || wHeight !== _cachedParentHeight) {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(displaySize * dpr);
+        canvas.height = Math.floor(displaySize * dpr);
+        canvas.style.width = `${displaySize}px`;
+        canvas.style.height = `${displaySize}px`;
+        _cachedParentWidth = wWidth;
+        _cachedParentHeight = wHeight;
+    }
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(displaySize * dpr);
-    canvas.height = Math.floor(displaySize * dpr);
-    canvas.style.width = `${displaySize}px`;
-    canvas.style.height = `${displaySize}px`;
-
     ctx.resetTransform();
     ctx.scale(dpr, dpr);
 
     const width = displaySize;
     const height = displaySize;
-    const scale = width / 30.0;
+    const scale = width / 32.0;
     const cx = width / 2;
     const cy = height / 2;
     const R0 = 8.5;
 
-    // Static Background & Grids
+    // Draw solid clean base
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
+    // Draw Light background grids
     ctx.strokeStyle = "#f1f5f9";
     ctx.lineWidth = 1;
-    for (let x = 0; x <= width; x += 5 * scale) {
+    const step = 5 * scale;
+    for (let x = cx % step; x <= width; x += step) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, x); ctx.lineTo(width, x); ctx.stroke();
+    }
+    for (let y = cy % step; y <= height; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
     }
 
+    // Concentric galactic range rings
     ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 1;
     [4.0, 8.5, 12.0].forEach(r => {
         ctx.beginPath();
         ctx.arc(cx, cy, r * scale, 0, 2 * Math.PI);
@@ -1262,33 +1345,61 @@ function renderGalactic2DMap(forceRecalculate = false) {
         ctx.fillText(`R=${r}kpc`, cx + 4, cy - (r * scale) - 3);
     });
 
+    // Central crosshairs lines
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, height); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(width, cy); ctx.stroke();
 
-    // Fast Point Blitting using Offscreen Sprites
-    const spriteSize = Math.max(6, 1.3 * scale);
+    ctx.lineWidth = 1.5;
+
+    // Perseus Arm Reference Circle Arc
+    ctx.strokeStyle = "rgba(219, 39, 119, 0.25)"; // Soft pink overlay trace
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10.5 * scale, Math.PI * 0.75, Math.PI * 1.35);
+    ctx.stroke();
+
+    // Sagittarius Arm Reference Circle Arc
+    ctx.strokeStyle = "rgba(5, 150, 105, 0.25)"; // Soft green overlay trace
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6.0 * scale, Math.PI * 0.55, Math.PI * 0.95);
+    ctx.stroke();
+    // -------------------------------------------------------------------------
+
+    // Soft Fast Point Blitting 
+    const spriteSize = Math.max(6, 1.4 * scale);
     const halfSprite = spriteSize / 2;
 
+    // Sort ascending by weight so high-intensity yellow centers draw last (on top)
     cachedMappedPoints.sort((a, b) => a.weight - b.weight);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
 
     for (let i = 0; i < cachedMappedPoints.length; i++) {
         const pt = cachedMappedPoints[i];
+
         const px = cx + (pt.x * scale) - halfSprite;
         const py = cy - (pt.y * scale) - halfSprite;
+
+        if (px + spriteSize < 0 || px > width || py + spriteSize < 0 || py > height) continue;
 
         const normPower = Math.min(Math.max(pt.weight / cachedMaxPower, 0), 1);
         const binIndex = Math.min(Math.floor(normPower * NUM_BINS), NUM_BINS - 1);
 
-        // Hardware-accelerated image draw call
+        // Apply smooth dynamic transparency
+        ctx.globalAlpha = 0.3 + (normPower * 0.7);
+
         ctx.drawImage(viridisSprites[binIndex], px, py, spriteSize, spriteSize);
     }
+    ctx.restore(); // Reset drawing context state safely
 
-    // Overlays
+
+    // Core Galactic Center Point
     ctx.fillStyle = "#0f172a";
     ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.fill();
     ctx.font = "bold 10px system-ui";
     ctx.fillText("Galactic Center (0,0)", cx + 8, cy + 3);
 
+    // Sun Marker Allocation
     const sunX = cx;
     const sunY = cy - (R0 * scale);
     ctx.fillStyle = "#2563eb";
@@ -1296,51 +1407,71 @@ function renderGalactic2DMap(forceRecalculate = false) {
     ctx.fillStyle = "#1e40af";
     ctx.fillText("Sun (0, 8.5 kpc)", sunX + 8, sunY + 3);
 
+    // Foreground Cygnus Warning Zones
     ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
-    ctx.setLineDash([2, 2]);
     ctx.beginPath();
     let cygX = cx + (3.0 * scale);
     let cygY = cy - (10.0 * scale);
     ctx.arc(cygX, cygY, 12, 0, 2 * Math.PI);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.fillStyle = "#475569";
     ctx.font = "9px system-ui";
     ctx.fillText("Cygnus / Local Gas", cygX + 15, cygY + 3);
 
-    ctx.lineWidth = 1.5;
+    // Text labels aligned with our guide arcs
     ctx.font = "bold 11px system-ui";
-
-    ctx.strokeStyle = "rgba(219, 39, 119, 0.4)";
-    ctx.beginPath();
-    ctx.arc(cx, cy, 10.5 * scale, Math.PI * 0.75, Math.PI * 1.35);
-    ctx.stroke();
     ctx.fillStyle = "#db2777";
     ctx.fillText("Perseus Arm", cx - (12.5 * scale), cy + (2.0 * scale));
 
-    ctx.strokeStyle = "rgba(5, 150, 105, 0.4)";
-    ctx.beginPath();
-    ctx.arc(cx, cy, 6.0 * scale, Math.PI * 0.55, Math.PI * 0.95);
-    ctx.stroke();
     ctx.fillStyle = "#059669";
     ctx.fillText("Local / Sagittarius Arm", cx - (7.0 * scale), cy + (7.0 * scale));
 }
 
 
+
 // --- Log Handlers ---
 
-async function fetchAndDisplayLog(filePath, logTitle) {
+// Universal function to display text inside the modal with custom themes
+function showModalContent(title, content, isError = false) {
     const modal = document.getElementById("logModal");
     const modalTitle = document.getElementById("logModalTitle");
     const modalBody = document.getElementById("logModalBody");
 
-    modalTitle.innerText = logTitle;
-    modalBody.innerText = "Fetching log content...";
+    if (!modal || !modalTitle || !modalBody) return;
+
+    // Toggle error theme class dynamically
+    if (isError) {
+        modal.classList.add("error-theme");
+        modalTitle.innerText = `⚠️ ${title}`;
+    } else {
+        modal.classList.remove("error-theme");
+        modalTitle.innerText = title;
+    }
+
+    // Set body content (use innerHTML if it contains formatting tags, otherwise innerText)
+    if (isError && content instanceof Error) {
+        const stackTrace = content.stack ? `<pre style="margin-top:10px; font-size:0.8rem; opacity:0.8; max-height:200px; overflow:auto;">${content.stack}</pre>` : '';
+        modalBody.innerHTML = `<div><b>Some errors occured:</b></div><div style="margin-top:5px;">${content.message}</div>${stackTrace}`;
+    } else {
+        // Safe standard plain-text binding for log files
+        modalBody.innerText = content;
+    }
+
     modal.style.display = "flex";
+}
+
+// 🚨 Global Error Handler
+function displayGlobalError(contextTitle, errorObject) {
+    showModalContent(contextTitle, errorObject, true);
+}
+
+async function fetchAndDisplayLog(filePath, logTitle) {
+    // Show a clean loading state (resets any previous error themes)
+    showModalContent(logTitle, "Fetching log content...", false);
 
     try {
         const content = await fetchAndDecompress(filePath);
-        modalBody.innerText = content || "(Log file is empty)";
+        showModalContent(logTitle, content || "(Log file is empty)", false);
         return content;
     } catch (err) {
         // Rethrow so the caller's .catch() block knows this fetch failed!
@@ -1355,32 +1486,37 @@ function viewDailyScanLog(fileName = "scan.log", logTitleOverride = null) {
     if (dateParts.length !== 3) return;
 
     const baseLogName = fileName.replace(/\.gz$/, '');
-    const displayTitle = logTitleOverride || `${baseLogName} (${dateInput.value})`;
+    // const displayTitle = `${logTitleOverride || baseLogName} (${dateInput.value})`;
 
     // Check if file is a root system log vs daily observation log
     const isSystemLog = baseLogName.includes("telescope_system") || baseLogName.includes("server_web");
+    const dateTag = !isSystemLog ? ` (${dateInput.value})` : '';
+    const displayTitle = `${logTitleOverride || baseLogName}${dateTag}`;
+
 
     // System logs live at root; daily logs live in YYYY/MM/DD/
     const basePath = isSystemLog
         ? baseLogName
         : `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/${baseLogName}`;
 
-    // 1. Try .gz path first
+    // Try .gz path first
     fetchAndDisplayLog(`${basePath}.gz`, displayTitle)
-        // 2. Fall back to raw file
+        // Fall back to raw file
         .catch(() => fetchAndDisplayLog(basePath, displayTitle))
-        // 3. Handle failure if neither exists
         .catch((err) => {
-            const modalBody = document.getElementById("logModalBody");
-            if (modalBody) {
-                modalBody.innerText = `Error loading log: File not found.\nAttempted paths:\n- ${basePath}.gz\n- ${basePath}`;
-            }
+            const errorDetails = `File not found or unreadable.\n\nAttempted paths:\n- ${basePath}.gz\n- ${basePath}`;
+            showModalContent(`Error Loading Log`, errorDetails, true);
         });
 }
 
 function closeLogModal() {
-    document.getElementById("logModal").style.display = "none";
+    const modal = document.getElementById("logModal");
+    if (modal) {
+        modal.style.display = "none";
+        modal.classList.remove("error-theme"); // Always scrub style clean on exit
+    }
 }
+
 
 // --- Controls & Playback Handlers ---
 
@@ -1409,14 +1545,14 @@ function togglePlayback() {
     if (isPlaying) {
         clearInterval(playbackIntervalId);
         isPlaying = false;
-        playBtn.innerText = "â–¶ï¸ Play";
+        playBtn.innerText = "▶️ Play";
     } else {
         if (startIdx >= endIdx) {
             alert("Start block must be before End block!");
             return;
         }
         isPlaying = true;
-        playBtn.innerText = "â¸ï¸ Pause";
+        playBtn.innerText = "⏸️ Pause";
         currentFrameIndex = startIdx;
 
         playbackIntervalId = setInterval(() => {
@@ -1425,7 +1561,7 @@ function togglePlayback() {
             if (currentFrameIndex > endIdx) {
                 clearInterval(playbackIntervalId);
                 isPlaying = false;
-                playBtn.innerText = "â–¶ï¸ Play";
+                playBtn.innerText = "▶️ Play";
             }
         }, 600);
     }
