@@ -1,19 +1,29 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
 body {
     background-color: #f8fafc;
     color: #1e293b;
     font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
     padding: 12px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    margin: 0;
 }
 
 .dashboard {
     width: 100%;
-    max-width: 1100px;
+    max-width: 100%;
     margin: 0 auto;
+    padding: 12px;
     box-sizing: border-box;
 }
 
@@ -25,13 +35,6 @@ header {
     border-bottom: 2px solid #cbd5e1;
     padding-bottom: 12px;
     margin-bottom: 16px;
-}
-
-@media (min-width: 600px) {
-    header {
-        flex-direction: row;
-        justify-content: space-between;
-    }
 }
 
 h1 {
@@ -49,12 +52,6 @@ h1 {
     justify-content: center;
     gap: 8px;
     width: 100%;
-}
-
-@media (min-width: 600px) {
-    .controls {
-        width: auto;
-    }
 }
 
 button {
@@ -143,17 +140,19 @@ button.btn-secondary:hover {
     margin-bottom: 16px;
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
     align-items: flex-end;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 4px;
-    flex-grow: 1;
-    min-width: 130px;
+    flex: 1 1 140px;
+    min-width: 0;
 }
 
 .filter-group label {
@@ -165,7 +164,8 @@ button.btn-secondary:hover {
 }
 
 .filter-group select,
-.filter-group input[type="date"] {
+.filter-group input[type="date"],
+.filter-group input {
     background: #ffffff;
     color: #0f172a;
     border: 1px solid #cbd5e1;
@@ -177,18 +177,17 @@ button.btn-secondary:hover {
     outline: none;
 }
 
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     margin-bottom: 16px;
-}
-
-@media (min-width: 480px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
-    }
 }
 
 .stat-card {
@@ -200,6 +199,10 @@ button.btn-secondary:hover {
     text-align: left;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+
+.stat-card-oort {
+    border-left: 4px solid #10b981;
+} 
 
 .stat-label {
     font-size: 10px;
@@ -218,7 +221,23 @@ button.btn-secondary:hover {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
-.chart-container {
+.stat-footnote {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.stat-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    color: #334155;
+    margin-left: 6px;
+}
+
+.chart-container,
+.chart-card {
     background-color: #ffffff;
     padding: 12px;
     border-radius: 8px;
@@ -228,36 +247,14 @@ button.btn-secondary:hover {
     box-sizing: border-box;
 }
 
-.chart-wrapper {
+.chart-wrapper,
+#densityCard .chart-wrapper,
+#phaseCard .chart-wrapper {
     position: relative;
     width: 100%;
     height: 320px;
     padding-bottom: 12px;
     box-sizing: border-box;
-}
-
-.chart-container,
-.waterfall-card {
-    background-color: #ffffff;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    margin-bottom: 16px;
-    box-sizing: border-box;
-}
-
-.waterfall-card .canvas-wrapper {
-    position: relative;
-    width: 100%;
-    height: 280px;
-    /* Expands canvas to match Chart.js card proportions */
-    margin-top: 24px;
-    margin-bottom: 26px;
-    background-color: #0f172a;
-    border-radius: 4px;
-    border: 1px solid #cbd5e1;
-    overflow: visible;
 }
 
 .waterfall-header {
@@ -283,6 +280,23 @@ button.btn-secondary:hover {
     background-color: #0f172a;
     border-radius: 4px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.chart-card .canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    margin-top: 24px;
+    margin-bottom: 26px;
+    background-color: #0f172a;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    overflow: visible;
 }
 
 canvas#waterfallCanvas {
@@ -326,7 +340,29 @@ canvas#waterfallCanvas {
     white-space: nowrap;
 }
 
-/* Log Viewer Modal */
+.waterfall-gradient-bar {
+    flex-grow: 1;
+    height: 8px;
+    margin: 0 12px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    /* from buildWaterfallCache() */
+    background: linear-gradient(to right,
+            rgb(0, 0, 127) 0%,
+            /* Dark Blue */
+            rgb(0, 255, 255) 25%,
+            /* Cyan */
+            rgb(0, 255, 0) 50%,
+            /* Green */
+            rgb(255, 255, 0) 75%,
+            /* Yellow */
+            rgb(255, 0, 0) 87.5%,
+            /* Bright Red (True Peak) */
+            rgb(127, 0, 0) 100%
+            /* Dark Red (Max dB value) */
+        );
+}
+
 .modal-overlay {
     display: none;
     position: fixed;
@@ -387,45 +423,17 @@ canvas#waterfallCanvas {
     flex-grow: 1;
 }
 
-/* 🚨 Error Theme Modifier Classes */
 .modal-overlay.error-theme .modal-header {
-    background-color: #fee2e2; /* Soft red background */
-    color: #991b1b;            /* Dark red text */
+    background-color: #fee2e2;
+    color: #991b1b;
     border-bottom: 1px solid #fca5a5;
 }
 
 .modal-overlay.error-theme .modal-body {
     color: #dc2626;
-    font-family: monospace; /* Makes stack traces easier to read */
-    white-space: pre-wrap;  /* Preserves line breaks in error messages */
+    font-family: monospace;
+    white-space: pre-wrap;
 }
-
-@media (max-width: 640px) {
-
-    .chart-container {
-        height: 380px;
-        /* Give canvas more vertical room */
-        padding-bottom: 50px;
-        /* Extra room specifically for mobile axis labels */
-    }
-
-    .waterfall-card .canvas-wrapper {
-        height: 300px;
-    }
-
-    .waterfall-ticks-top,
-    .waterfall-ticks-bottom {
-        font-size: 0.65rem;
-    }
-
-    .waterfall-ticks-top span:nth-child(2),
-    .waterfall-ticks-top span:nth-child(5),
-    .waterfall-ticks-bottom span:nth-child(2),
-    .waterfall-ticks-bottom span:nth-child(4) {
-        display: none;
-    }
-}
-
 
 #galacticMapCard .chart-container {
     display: flex;
@@ -441,7 +449,6 @@ canvas#waterfallCanvas {
     width: 100%;
     max-width: 100%;
     max-height: 310px;
-    /* Restrains height to prevent card overflow */
     margin: 8px auto;
     background-color: #ffffff;
     border-radius: 6px;
@@ -486,21 +493,59 @@ canvas#galacticMapCanvas {
     margin: 0 12px;
     border-radius: 4px;
     border: 1px solid #cbd5e1;
-    background: linear-gradient(to right, #440154, #31688e, #35b779, #fde725);
+    /* Viridis palette interpolation matching getViridisColor stops: c0 -> c1 -> c2 -> c3 -> c4 */
+    background: linear-gradient(to right,
+            rgb(68, 1, 84) 0%,
+            /* c0 - Deep Purple */
+            rgb(59, 82, 139) 25%,
+            /* c1 - Blue */
+            rgb(33, 145, 140) 50%,
+            /* c2 - Teal */
+            rgb(94, 201, 98) 75%,
+            /* c3 - Green */
+            rgb(253, 231, 37) 100%
+            /* c4 - Yellow */
+        );
 }
 
-/* Mobile Responsiveness Adjustments */
-@media (max-width: 640px) {
-    #galacticMapCard .chart-container {
-        height: 380px;
-        /* Matches mobile chart-container rules */
-    }
-
-    .map-canvas-wrapper {
-        max-height: 270px;
-    }
+.plots-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 16px;
+    width: 100%;
 }
 
+.chart-card {
+    background-color: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.plot-box {
+    position: relative;
+    width: 100%;
+    height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.plot-box canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    object-fit: contain;
+}
 
 footer.app-footer {
     margin-top: 3rem;
@@ -509,4 +554,129 @@ footer.app-footer {
     text-align: center;
     font-size: 0.875rem;
     border-top: 1px solid #1e293b;
+}
+
+@media (min-width: 480px) {
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+}
+
+@media (max-width: 480px) {
+    .filter-actions .btn-text {
+        display: none;
+    }
+
+    .filter-actions button {
+        padding: 6px 4px;
+        font-size: 14px;
+    }
+
+}
+
+@media (min-width: 600px) {
+    header {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .controls {
+        width: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .chart-container {
+        height: 380px;
+        padding-bottom: 50px;
+    }
+
+    .chart-card .canvas-wrapper {
+        height: 300px;
+    }
+
+    .waterfall-ticks-top {
+        top: -14px;
+        font-size: 0.65rem;
+    }
+
+    .waterfall-ticks-bottom {
+        font-size: 0.65rem;
+    }
+
+    .waterfall-ticks-top span:nth-child(2),
+    /* .waterfall-ticks-top span:nth-child(5), */
+    .waterfall-ticks-bottom span:nth-child(2),
+    .waterfall-ticks-bottom span:nth-child(4) {
+        display: none;
+    }
+
+    #galacticMapCard .chart-container {
+        height: 380px;
+    }
+
+    .map-canvas-wrapper {
+        max-height: 270px;
+    }
+
+    .filter-card {
+        padding: 6px 8px;
+        gap: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-group {
+        flex: 1 1 calc(50% - 6px);
+        gap: 2px;
+    }
+
+    .filter-group label {
+        font-size: 9px;
+        letter-spacing: 0;
+    }
+
+    .filter-group select,
+    .filter-group input[type="date"] {
+        padding: 4px 6px;
+        font-size: 11px;
+        height: 28px;
+    }
+
+    .filter-actions {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+        margin-top: 2px;
+    }
+
+    .filter-actions button {
+        flex: 1;
+        padding: 5px 2px;
+        font-size: 11px;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+}
+
+@media (max-width: 768px) {
+    .plot-box {
+        height: 260px;
+    }
+
+    header,
+    .controls {
+        /* flex-direction: column; */
+        align-items: stretch;
+    }
+}
+
+@media (min-width: 992px) {
+    .plots-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }

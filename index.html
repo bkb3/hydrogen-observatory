@@ -3,8 +3,6 @@
 
 <head>
     <meta charset="UTF-8" />
-    <!-- Primary Meta Tags -->
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Milky Way 21cm Hydrogen Line Observatory | DSP Radio Astronomy Dashboard</title>
     <meta name="title" content="Milky Way 21cm Hydrogen Line Observatory | DSP Radio Astronomy Dashboard" />
@@ -14,7 +12,6 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://bkb3.github.io/hydrogen-observatory/" />
 
-    <!-- Open Graph / Facebook / LinkedIn -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://bkb3.github.io/hydrogen-observatory/" />
     <meta property="og:title" content="Milky Way 21cm Hydrogen Line Observatory Dashboard" />
@@ -22,18 +19,23 @@
         content="Interactive DSP spectrum analyzer and waterfall plot for neutral hydrogen drift scans, mapping galactic rotation and Doppler velocities." />
     <meta property="og:image" content="https://bkb3.github.io/hydrogen-observatory/preview-thumbnail.png" />
 
-    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://bkb3.github.io/hydrogen-observatory/" />
     <meta name="twitter:title" content="Milky Way 21cm Hydrogen Line Observatory Dashboard" />
     <meta name="twitter:description"
         content="Interactive DSP spectrum analyzer and waterfall plot for neutral hydrogen drift scans, mapping galactic rotation and Doppler velocities." />
     <meta name="twitter:image" content="https://bkb3.github.io/hydrogen-observatory/preview-thumbnail.png" />
-    <title>Milky Way Hydrogen Line Radio Telescope Observatory</title>
-    <script src="static/chart.js"></script>
-    <script src="static/pako.min.js"></script>
-    <script src="static/21cm.js"></script>
-    <link rel="stylesheet" href="static/21cm.css">
+
+    <script src="static/js/chart.js"></script>
+    <script src="static/js/pako.min.js"></script>
+
+    <script src="static/js/21cm/config-utils.js"></script>
+    <script src="static/js/21cm/data-processing.js"></script>
+    <script src="static/js/21cm/astro-kinematics.js"></script>
+    <script src="static/js/21cm/ui-controller.js"></script>
+    <script src="static/js/21cm/21cm-main.js"></script>
+
+    <link rel="stylesheet" href="static/css/21cm.css">
 </head>
 
 <body>
@@ -42,26 +44,24 @@
             <h1>🌌 Neutral Hydrogen Observation Panel</h1>
             <div class="controls">
                 <div class="toggle-container">
-                    <input type="checkbox" id="autoRefreshCheck" onchange="toggleAutoRefresh()" />
+                    <input type="checkbox" id="autoRefreshCheck" />
                     <label for="autoRefreshCheck">🛰️ Live (30s)</label>
                 </div>
-                <div class="toggle-container">
+                <!-- <div class="toggle-container">
                     <input type="checkbox" id="overlayModeCheck" checked onchange="toggleOverlayMode()" />
                     <label for="overlayModeCheck">📐 Raw Overlay</label>
-                </div>
+                </div> -->
                 <div class="toggle-container">
-                    <input type="checkbox" id="waterfallToggleCheck" checked onchange="toggleWaterfallDisplay()" />
+                    <!-- <input type="checkbox" id="waterfallToggleCheck" checked onchange="toggleWaterfallDisplay()" />
                     <label for="waterfallToggleCheck">🔥 Heatmap</label>
+                </div> -->
+                    <button class="btn-secondary" id="viewLogBtnSys"
+                        title="View telescope runtime log for selected date">📋 System Log</button>
+                    <button id="refreshBtn">🔄 Force Refresh</button>
                 </div>
-                <button class="btn-secondary"
-                    onclick="viewDailyScanLog('telescope_system.log', 'System Log')"
-                    title="View telescope runtime log for selected date">📋 System
-                    Log</button>
-                <button onclick="loadAndPlotData(true)">🔄 Force Refresh</button>
             </div>
         </header>
 
-        <!-- Fixed Telescope Parameters Bar -->
         <div class="params-bar">
             <div class="params-group">
                 <span class="param-item"><strong>Pointing:</strong> Az 180°, El 30°</span>
@@ -77,9 +77,9 @@
         </div>
 
         <div class="filter-card">
-            <div class="filter-group" style="max-width: 160px">
+            <div class="filter-group">
                 <label>Observation Date</label>
-                <input type="date" id="obsDateInput" onchange="loadAndPlotData(true)" />
+                <input type="date" id="datePicker" />
             </div>
             <div class="filter-group">
                 <label>Start Block (UTC)</label>
@@ -90,12 +90,16 @@
                 <select id="endTimeSelect"></select>
             </div>
 
-            <button class="btn-secondary" onclick="stepFrame(-1)" title="Previous Frame">⏮️ Back</button>
-            <button id="playPauseBtn" onclick="togglePlayback()" title="Play / Pause Filter Loop">▶️ Play</button>
-            <button class="btn-secondary" onclick="stepFrame(1)" title="Next Frame">⏭️ Next</button>
-            <button class="btn-secondary" onclick="viewDailyScanLog('scan.log', 'Scan Log')"
-                title="View scan log for selected date">📜
-                Scan Log</button>
+            <div class="filter-actions">
+                <button id="prevFrameBtn" class="btn-secondary" title="Previous Frame">⏮️ <span
+                        class="btn-text">Back</span></button>
+                <button id="playPauseBtn" title="Play / Pause Filter Loop">▶️ <span
+                        class="btn-text">Play</span></button>
+                <button id="nextFrameBtn" class="btn-secondary" title="Next Frame">⏭️ <span
+                        class="btn-text">Next</span></button>
+                <button id="viewLogBtnScan" class="btn-secondary" title="View scan log for selected date">📜 <span
+                        class="btn-text">Scan Log</span></button>
+            </div>
         </div>
 
         <div class="stats-grid">
@@ -115,66 +119,81 @@
                 <div class="stat-label">Peak Frequency (Doppler Shift)</div>
                 <div id="statPeakFreq" class="stat-value">---</div>
             </div>
-        </div>
-
-        <div class="chart-container">
-            <div class="waterfall-header">
-                <span class="waterfall-title">⚡ Power spectrum</span>
-                <!-- <span style="font-size: 11px; color: #64748b;">Blue (0 dB) ──► Yellow/Red (+3 dB Peak)</span> -->
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="spectrumChart"></canvas>
-            </div>
-        </div>
-
-        <div class="waterfall-card" id="waterfallContainer">
-            <div class="waterfall-header">
-                <span class="waterfall-title">🌊 Spectrogram Waterfall (Time vs Frequency Intensity)</span>
-                <span style="font-size: 11px; color: #64748b;">Blue (0 dB) ──► Yellow/Red (+3 dB Peak)</span>
-            </div>
-
-            <div class="canvas-wrapper">
-
-                <!-- Top Velocity Ticks (km/s) -->
-                <div class="waterfall-ticks-top"></div>
-
-                <!-- Spectrogram Canvas -->
-                <canvas id="waterfallCanvas" style="width: 100%; display: block;"></canvas>
-
-                <!-- Bottom Frequency Ticks (MHz) -->
-                <div class="waterfall-ticks-bottom"></div>
-            </div>
-        </div>
-
-        <!-- Galactic Rotation Curve Container -->
-        <div id="rotationCard" style="margin-top: 16px;">
-            <div class="chart-container">
-                <div class="waterfall-header">
-                    <span class="waterfall-title">🌌 Milky Way Rotation Curve (24h Tangent Method) [ ⚠️ Beta ⚠️ ]</span>
-                    <span style="font-size: 11px; color: #64748b;">Flat ~220 km/s plateau demonstrates Dark
-                        Matter</span>
+            <div class="stat-card stat-card-oort">
+                <div class="stat-label">Oort Constant A</div>
+                <div class="stat-value">
+                    <span id="statOortA">--</span> <span class="unit">km/s/kpc</span>
+                    <span class="stat-badge" id="statOortDevBadge"><span id="statOortDev">--</span>%</span>
                 </div>
-                <div class="chart-wrapper">
+                <div class="stat-footnote">IAU Ref: <span id="statOortIAU">--</span> km/s/kpc</div>
+                <div class="stat-footnote">Clean WNM Frames: <span id="statOortFrames">--</span></div>
+            </div>
+        </div>
+
+        <div class="plots-grid">
+            <div class="chart-card">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">⚡ Power Spectrum</span>
+                </div>
+                <div class="plot-box">
+                    <canvas id="spectrumChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card" id="waterfallContainer">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">🌊 Spectrogram Waterfall</span>
+                </div>
+                <div class="plot-box canvas-wrapper">
+                    <div class="waterfall-ticks-top"></div>
+                    <canvas id="waterfallCanvas"></canvas>
+                    <div class="waterfall-ticks-bottom"></div>
+                </div>
+                <div class="map-legend">
+                    <span class="legend-text" id="waterfallMinPowerVal">Min: 0.000 dB</span>
+                    <div class="waterfall-gradient-bar"></div>
+                    <span class="legend-text" id="waterfallMaxPowerVal">Max: 0.000 dB</span>
+                </div>
+            </div>
+
+            <div class="chart-card" id="galacticMapCard">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">🗺️ 2D Milky Way Neutral Hydrogen (HI) Map</span>
+                </div>
+                <div class="plot-box map-canvas-wrapper">
+                    <canvas id="galacticMapCanvas"></canvas>
+                </div>
+                <div class="map-legend">
+                    <span class="legend-text" id="mapMinPowerVal">Min: -.--- dB</span>
+                    <div class="gradient-bar"></div>
+                    <span class="legend-text" id="mapMaxPowerVal">Max: -.--- dB</span>
+                </div>
+            </div>
+
+            <div class="chart-card" id="rotationCard">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">🌌 Milky Way Rotation Curve (24h Tangent Method)</span>
+                </div>
+                <div class="plot-box">
                     <canvas id="rotationChart"></canvas>
                 </div>
             </div>
-        </div>
 
-        <!-- 2D Galactic Hydrogen Density Map Container -->
-        <div id="galacticMapCard" style="margin-top: 16px;">
-            <div class="chart-container">
+            <div class="chart-card" id="densityCard">
                 <div class="waterfall-header">
-                    <span class="waterfall-title">🗺️ 2D Milky Way Neutral Hydrogen (HI) Density Map [ ⚠️ Beta ⚠️ ]</span>
-                    <span style="font-size: 11px; color: #64748b;">Top-down Galactic plane projection (Sun at X: 0, Y:
-                        8.5 kpc)</span>
+                    <span class="waterfall-title">📊 HI Column Density Distribution (N_HI)</span>
                 </div>
-                <div class="map-canvas-wrapper">
-                    <canvas id="galacticMapCanvas" width="600" height="600"></canvas>
+                <div class="plot-box">
+                    <canvas id="densityChart"></canvas>
                 </div>
-                <div class="map-legend">
-                    <span class="legend-text">Min Signal Power</span>
-                    <div class="gradient-bar"></div>
-                    <span class="legend-text">Max Signal Power</span>
+            </div>
+
+            <div class="chart-card" id="phaseCard">
+                <div class="waterfall-header">
+                    <span class="waterfall-title">☁️ HI Phase Distribution & Kinematic Shear</span>
+                </div>
+                <div class="plot-box">
+                    <canvas id="phaseChartCanvas"></canvas>
                 </div>
             </div>
         </div>
@@ -182,12 +201,9 @@
         <footer class="app-footer">
             <p>Radio Telescope Dashboard &bull; 21cm Hydrogen Line Survey</p>
             <p>Author: <a href="https://github.com/bkb3">bkb3</a></p>
-
         </footer>
-
     </div>
 
-    <!-- Log Viewer Modal -->
     <div class="modal-overlay" id="logModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -197,8 +213,6 @@
             <div class="modal-body" id="logModalBody">Loading log output...</div>
         </div>
     </div>
-
-
 </body>
 
 </html>
