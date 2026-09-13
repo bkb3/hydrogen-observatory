@@ -282,7 +282,7 @@ function buildWaterfallCache() {
     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
 
     const numBlocks = globalBlocksCache.length;
-    const numBins = globalBlocksCache[0].freqs.length;
+    const numBins = globalBlocksCache[0].freqs ? globalBlocksCache[0].freqs.length : globalBlocksCache[0].correctedPowers.length;
 
     staticWaterfallCanvas.width = numBins;
     staticWaterfallCanvas.height = numBlocks;
@@ -299,12 +299,12 @@ function buildWaterfallCache() {
         }
     }
 
-    // Fallback if data is missing
     if (globalMin === Infinity) globalMin = -0.2;
     if (globalMax === -Infinity || globalMax === globalMin) globalMax = 1.0;
 
-    const range = globalMax - globalMin;
-    const imgData = staticWaterfallCtx.createImageData(numBins, numBlocks);
+    const range = globalMax - globalMin || 1;
+    const staticCtx = staticWaterfallCanvas.getContext("2d");
+    const imgData = staticCtx.createImageData(numBins, numBlocks);
     const data = imgData.data;
 
     for (let b = 0; b < numBlocks; b++) {
@@ -314,20 +314,18 @@ function buildWaterfallCache() {
         for (let i = 0; i < numBins; i++) {
             let val = powers[i];
             let norm = Math.max(0, Math.min(1, (val - globalMin) / range));
-
-            let r = Math.floor(255 * Math.min(1, Math.max(0, 1.5 - Math.abs(norm * 4 - 3))));
-            let g = Math.floor(255 * Math.min(1, Math.max(0, 1.5 - Math.abs(norm * 4 - 2))));
-            let bCol = Math.floor(255 * Math.min(1, Math.max(0, 1.5 - Math.abs(norm * 4 - 1))));
+            
+            let color = getInfernoColor(norm);
 
             let pixelIdx = (b * numBins + i) * 4;
-            data[pixelIdx] = r;
-            data[pixelIdx + 1] = g;
-            data[pixelIdx + 2] = bCol;
+            data[pixelIdx]     = color.r;
+            data[pixelIdx + 1] = color.g;
+            data[pixelIdx + 2] = color.b;
             data[pixelIdx + 3] = 255;
         }
     }
 
-    staticWaterfallCtx.putImageData(imgData, 0, 0);
+    staticCtx.putImageData(imgData, 0, 0);
     isWaterfallCached = true;
 
     const waterfallMin = document.getElementById("waterfallMinPowerVal");
@@ -336,6 +334,7 @@ function buildWaterfallCache() {
     if (waterfallMin) waterfallMin.textContent = `Min: ${globalMin.toFixed(3)} dB`;
     if (waterfallMax) waterfallMax.textContent = `Max: ${globalMax.toFixed(3)} dB`;
 }
+
 
 function renderWaterfallFull() {
     const container = document.getElementById("waterfallContainer");
@@ -451,14 +450,14 @@ function togglePlayback() {
     if (isPlaying) {
         clearInterval(playbackIntervalId);
         isPlaying = false;
-        playBtn.innerText = "▶️ Play";
+        playBtn.innerHTML = '▶️ <span class="btn-text">Play</span>';
     } else {
         if (startIdx >= endIdx) {
             alert("Start block must be before End block!");
             return;
         }
         isPlaying = true;
-        playBtn.innerText = "⏸️ Pause";
+        playBtn.innerHTML = '⏸️ <span class="btn-text">Pause</span>';
         currentFrameIndex = startIdx;
 
         playbackIntervalId = setInterval(() => {
@@ -467,7 +466,7 @@ function togglePlayback() {
             if (currentFrameIndex > endIdx) {
                 clearInterval(playbackIntervalId);
                 isPlaying = false;
-                playBtn.innerText = "▶️ Play";
+                playBtn.innerHTML = '▶️ <span class="btn-text">Play</span>';
             }
         }, 600);
     }

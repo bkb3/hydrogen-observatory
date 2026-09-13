@@ -26,6 +26,9 @@
         content="Interactive DSP spectrum analyzer and waterfall plot for neutral hydrogen drift scans, mapping galactic rotation and Doppler velocities." />
     <meta name="twitter:image" content="https://bkb3.github.io/hydrogen-observatory/preview-thumbnail.png" />
 
+    <link rel="icon"
+        href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn4yMPC90ZXh0Pjwvc3ZnPg==">
+
     <script src="static/js/chart.js"></script>
     <script src="static/js/pako.min.js"></script>
 
@@ -47,19 +50,13 @@
                     <input type="checkbox" id="autoRefreshCheck" />
                     <label for="autoRefreshCheck">🛰️ Live (30s)</label>
                 </div>
-                <!-- <div class="toggle-container">
-                    <input type="checkbox" id="overlayModeCheck" checked onchange="toggleOverlayMode()" />
-                    <label for="overlayModeCheck">📐 Raw Overlay</label>
-                </div> -->
-                <div class="toggle-container">
-                    <!-- <input type="checkbox" id="waterfallToggleCheck" checked onchange="toggleWaterfallDisplay()" />
-                    <label for="waterfallToggleCheck">🔥 Heatmap</label>
-                </div> -->
-                    <button class="btn-secondary" id="viewLogBtnSys"
-                        title="View telescope runtime log for selected date">📋 System Log</button>
-                    <button id="refreshBtn">🔄 Force Refresh</button>
-                </div>
+
+                <button class="btn-secondary" id="viewLogBtnSys" title="View telescope runtime log for selected date">📋
+                    System Log</button>
+                <button id="viewLogBtnScan" class="btn-secondary" title="View scan log for selected date">📜 Scan
+                    Log</button>
             </div>
+
         </header>
 
         <div class="params-bar">
@@ -97,38 +94,68 @@
                         class="btn-text">Play</span></button>
                 <button id="nextFrameBtn" class="btn-secondary" title="Next Frame">⏭️ <span
                         class="btn-text">Next</span></button>
-                <button id="viewLogBtnScan" class="btn-secondary" title="View scan log for selected date">📜 <span
-                        class="btn-text">Scan Log</span></button>
+                <button id="refreshBtn" class="btn-secondary" title="Refresh">🔄 <span class="btn-text">Refresh</button>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Data Integration Block</div>
-                <div id="statBlocks" class="stat-value">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Observation Time</div>
-                <div id="statTime" class="stat-value">0m 0s</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Peak Power</div>
-                <div id="statPeakPower" class="stat-value">0.00 dB</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Peak Frequency (Doppler Shift)</div>
-                <div id="statPeakFreq" class="stat-value">---</div>
-            </div>
-            <div class="stat-card stat-card-oort">
-                <div class="stat-label">Oort Constant A</div>
-                <div class="stat-value">
-                    <span id="statOortA">--</span> <span class="unit">km/s/kpc</span>
-                    <span class="stat-badge" id="statOortDevBadge"><span id="statOortDev">--</span>%</span>
+        <div class="dashboard-stats-container">
+
+            <div class="stats-grid telemetry-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Data Integration Block</div>
+                    <div id="statBlocks" class="stat-value">0</div>
                 </div>
-                <div class="stat-footnote">IAU Ref: <span id="statOortIAU">--</span> km/s/kpc</div>
-                <div class="stat-footnote">Clean WNM Frames: <span id="statOortFrames">--</span></div>
+                <div class="stat-card">
+                    <div class="stat-label">Observation Time</div>
+                    <div id="statTime" class="stat-value">0m 0s</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Peak Power</div>
+                    <div id="statPeakPower" class="stat-value">0.00 dB</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Peak Frequency (Doppler)</div>
+                    <div id="statPeakFreq" class="stat-value">---</div>
+                </div>
             </div>
+
+            <div class="stats-grid analysis-grid">
+                <div class="stat-card stat-card-oort">
+                    <div class="stat-label">Oort Constant A</div>
+                    <div class="stat-value">
+                        <span id="statOortA">--</span> <span class="unit">km/s/kpc</span>
+                        <span class="stat-badge" id="statOortDevBadge"><span id="statOortDev">--</span>%</span>
+                    </div>
+                    <div class="stat-footnote">IAU Ref: <span id="statOortIAU">--</span> km/s/kpc</div>
+                    <div class="stat-footnote">Clean WNM Frames: <span id="statOortFrames">--</span></div>
+                </div>
+                <div class="stat-card stat-card-disk">
+                    <div class="stat-label">Milky Way Disk Thickness</div>
+                    <div class="stat-value">
+                        <span id="statDiskThickness">--</span> <span class="unit">pc</span>
+                        <span class="stat-badge" id="statDiskFwhmBadge"><span id="statDiskFwhm">--</span>° FWHM</span>
+                    </div>
+                    <div class="stat-footnote">Peak Density: <span id="statDiskPeakN">--</span> ×10²¹ cm⁻²</div>
+                    <div class="stat-footnote">Peak Latitude (b): <span id="statDiskPeakB">--</span>°</div>
+                </div>
+                <div class="stat-card stat-card-phases">
+                    <div class="stat-label">Global Gas Composition</div>
+                    <div class="stat-value">
+                        <span style="color: #06b6d4;" id="statMassCNM">--</span><span class="unit"
+                            style="color: #06b6d4;">%</span>
+                        <span style="color: #64748b; font-size: 1.5rem; margin: 0 6px;">/</span>
+                        <span style="color: #475569;" id="statMassWNM">--</span><span class="unit"
+                            style="color: #475569;">%</span>
+                    </div>
+                    <div class="stat-footnote"><span style="color: #0891b2; font-weight: 600;">Cold (CNM)</span> vs
+                        <span style="color: #475569; font-weight: 600;">Warm (WNM)</span>
+                    </div>
+                    <div class="stat-footnote">Analyzed Columns: <span id="statMassFrames">--</span></div>
+                </div>
+            </div>
+
         </div>
+
 
         <div class="plots-grid">
             <div class="chart-card">
@@ -150,9 +177,9 @@
                     <div class="waterfall-ticks-bottom"></div>
                 </div>
                 <div class="map-legend">
-                    <span class="legend-text" id="waterfallMinPowerVal">Min: 0.000 dB</span>
+                    <span class="legend-text" id="waterfallMinPowerVal">Min: -.--- dB</span>
                     <div class="waterfall-gradient-bar"></div>
-                    <span class="legend-text" id="waterfallMaxPowerVal">Max: 0.000 dB</span>
+                    <span class="legend-text" id="waterfallMaxPowerVal">Max: -.--- dB</span>
                 </div>
             </div>
 

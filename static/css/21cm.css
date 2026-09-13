@@ -48,9 +48,10 @@ h1 {
 
 .controls {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 8px;
+    align-items: center;
+    gap: 6px;
     width: 100%;
 }
 
@@ -183,11 +184,20 @@ button.btn-secondary:hover {
     gap: 6px;
 }
 
+.dashboard-stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
-    margin-bottom: 16px;
+    width: 100%;
 }
 
 .stat-card {
@@ -202,7 +212,33 @@ button.btn-secondary:hover {
 
 .stat-card-oort {
     border-left: 4px solid #10b981;
-} 
+}
+
+
+.stat-card-disk {
+    border-left: 4px solid #8b5cf6;
+}
+
+.stat-card-disk .stat-badge {
+    background-color: #f5f3ff;
+    color: #6d28d9;
+}
+
+.stat-card-disk .unit {
+    color: #8b5cf6;
+    font-weight: 500;
+}
+
+.stat-card-phases {
+    border-left: 4px solid #06b6d4;
+}
+
+.stat-card-phases .unit {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 1px;
+}
+
 
 .stat-label {
     font-size: 10px;
@@ -346,20 +382,24 @@ canvas#waterfallCanvas {
     margin: 0 12px;
     border-radius: 4px;
     border: 1px solid #cbd5e1;
-    /* from buildWaterfallCache() */
+    /* Matplotlib Inferno LUT Gradient */
     background: linear-gradient(to right,
-            rgb(0, 0, 127) 0%,
-            /* Dark Blue */
-            rgb(0, 255, 255) 25%,
-            /* Cyan */
-            rgb(0, 255, 0) 50%,
-            /* Green */
-            rgb(255, 255, 0) 75%,
-            /* Yellow */
-            rgb(255, 0, 0) 87.5%,
-            /* Bright Red (True Peak) */
-            rgb(127, 0, 0) 100%
-            /* Dark Red (Max dB value) */
+            rgb(0, 0, 4) 0%,
+            /* Deep Space Black/Purple */
+            rgb(30, 12, 69) 15%,
+            /* Dark Violet */
+            rgb(87, 16, 110) 33%,
+            /* Deep Magenta */
+            rgb(147, 38, 103) 50%,
+            /* Vivid Purple-Red */
+            rgb(208, 78, 62) 67%,
+            /* Bright Coral/Orange */
+            rgb(247, 147, 10) 83%,
+            /* Warm Yellow-Orange */
+            rgb(252, 228, 64) 95%,
+            /* Bright Yellow */
+            rgb(255, 255, 204) 100%
+            /* Peak White-Yellow */
         );
 }
 
@@ -557,12 +597,20 @@ footer.app-footer {
 }
 
 @media (min-width: 480px) {
-
     .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
+}
 
+@media (min-width: 900px) {
+    .telemetry-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .analysis-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 @media (max-width: 480px) {
@@ -671,7 +719,15 @@ footer.app-footer {
     header,
     .controls {
         /* flex-direction: column; */
+        /* flex-direction: row; */
         align-items: stretch;
+    }
+
+    .controls button,
+    .toggle-container {
+        font-size: 11px;
+        padding: 5px 8px;
+        white-space: nowrap;
     }
 }
 

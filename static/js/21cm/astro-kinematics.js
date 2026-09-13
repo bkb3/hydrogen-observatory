@@ -9,7 +9,7 @@ const viridisSprites = [];
 const SPRITE_SIZE = 16;
 const NUM_BINS = 10;
 
-function getGalacticLongitude(timestampStr) {
+function getGalacticCoordinates(timestampStr) {
     if (!timestampStr) return null;
 
     const match = timestampStr.match(/(\d{4})-(\d{2})-(\d{2})[T\s]+(\d{2}):(\d{2}):(\d{2})/);
@@ -30,7 +30,11 @@ function getGalacticLongitude(timestampStr) {
 
     let jd = (utcDate.getTime() / 86400000) + 2440587.5;
     let d = jd - 2451545.0;
+
+    // Fix: Ensure positive Greenwich Mean Sidereal Time
     let gmst = (280.46061837 + 360.98564736629 * d) % 360;
+    if (gmst < 0) gmst += 360;
+
     let lstDeg = (gmst + 84.43) % 360;
     if (lstDeg < 0) lstDeg += 360;
 
@@ -53,6 +57,7 @@ function getGalacticLongitude(timestampStr) {
 
     return { l, b };
 }
+
 
 function initViridisSprites() {
     if (viridisSprites.length > 0) return;
@@ -115,7 +120,7 @@ function updateGalacticPointsCache() {
     globalBlocksCache.forEach((block) => {
         if (!block.correctedPowers) return;
 
-        const coords = getGalacticLongitude(block.time);
+        const coords = getGalacticCoordinates(block.time);
         if (!coords) return;
 
         let l_deg = coords.l, b_deg = coords.b || 0;
@@ -254,7 +259,7 @@ function renderGalactic2DMap(forceRecalculate = false) {
         const labelText = `${r} kpc`;
         ctx.font = "600 8px monospace";
         ctx.textBaseline = "middle";
-        
+
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 3;
         ctx.strokeText(labelText, cx + 4, cy - (r * scale));
@@ -394,7 +399,7 @@ function drawTelescopeLineOfSight(timestampStr = null) {
     }
     if (!time) time = new Date().toISOString();
 
-    const galactic = typeof getGalacticLongitude === "function" ? getGalacticLongitude(time) : null;
+    const galactic = typeof getGalacticCoordinates === "function" ? getGalacticCoordinates(time) : null;
     if (!galactic || galactic.l === null || galactic.l === undefined) return;
 
     const lDeg = galactic.l;
@@ -433,9 +438,9 @@ function drawTelescopeLineOfSight(timestampStr = null) {
     try {
         const timeMatch = time.match(/(\d{2}:\d{2})/);
         if (timeMatch) shortTime = timeMatch[1];
-    } catch (e) {}
+    } catch (e) { }
 
-    const labelText = `Az 180° El 30° | l = ${lDeg.toFixed(1)}° | ${shortTime} UTC`;
+    const labelText = `Az 180Â° El 30Â° | l = ${lDeg.toFixed(1)}Â° | ${shortTime} UTC`;
 
     ctx.font = "600 10px system-ui, -apple-system, sans-serif";
     const textMetrics = ctx.measureText(labelText);
@@ -476,7 +481,7 @@ function renderRotationCurve() {
     let points = [];
 
     globalBlocksCache.forEach((block) => {
-        let coords = getGalacticLongitude(block.time);
+        let coords = getGalacticCoordinates(block.time);
         if (!coords) return;
 
         let l_deg = (coords.l % 360 + 360) % 360;
@@ -695,7 +700,7 @@ function renderRotationCurve() {
                             if (ctx.dataset.type === "line") {
                                 return `${ctx.dataset.label}: ${ctx.parsed.y} km/s`;
                             }
-                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}°)`;
+                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}Â°)`;
                         }
                     }
                 }
@@ -704,28 +709,89 @@ function renderRotationCurve() {
     });
 }
 
+function calculateDiskThickness(tempPoints, distancePC = 250.0) {
+    if (!tempPoints || tempPoints.length < 5) return null;
+
+    let maxDensity = -Infinity;
+    let peakLatitude = 0;
+
+    tempPoints.forEach(pt => {
+        if (pt.density > maxDensity) {
+            maxDensity = pt.density;
+            peakLatitude = pt.y;
+        }
+    });
+
+    const halfMax = maxDensity * 0.5;
+    let b_bottom = null;
+    let b_top = null;
+
+    const sortedPoints = [...tempPoints].sort((a, b) => a.y - b.y);
+
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+        const p1 = sortedPoints[i];
+        const p2 = sortedPoints[i + 1];
+
+        if (p1.density <= halfMax && p2.density >= halfMax && p2.y <= peakLatitude) {
+            const t = (halfMax - p1.density) / (p2.density - p1.density);
+            b_bottom = p1.y + t * (p2.y - p1.y);
+        }
+        if (p1.density >= halfMax && p2.density <= halfMax && p1.y >= peakLatitude) {
+            const t = (halfMax - p1.density) / (p2.density - p1.density);
+            b_top = p1.y + t * (p2.y - p1.y);
+        }
+    }
+
+    if (b_bottom === null) b_bottom = peakLatitude - (sortedPoints[sortedPoints.length - 1].y - peakLatitude);
+    if (b_top === null) b_top = peakLatitude + (peakLatitude - sortedPoints[0].y);
+
+    const fwhmDegrees = Math.abs(b_top - b_bottom);
+
+    // Scale against the assumed distance to the gas structure
+    // local distance baseline ~ distancePC ~ 250
+    const physicalThicknessPC = distancePC * Math.tan(fwhmDegrees * (Math.PI / 180));
+
+    return {
+        peakDensityNHI: parseFloat(maxDensity.toFixed(3)),
+        peakLatitudeDeg: parseFloat(peakLatitude.toFixed(2)),
+        angularFwhmDeg: parseFloat(fwhmDegrees.toFixed(2)),
+        diskThicknessPC: parseFloat(physicalThicknessPC.toFixed(1))
+    };
+}
+
+
+
 function renderColumnDensity() {
     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
 
     const c = 299792.458;
-    const fRest = 1420.4058;
-    let densityProfile = [];
+    const fRest = 1420.405751;
+    const scatterData = [];
+    const pointColors = [];
 
+    let minN = Infinity;
+    let maxN = -Infinity;
+
+    const tempPoints = [];
     globalBlocksCache.forEach((block) => {
-        let coords = getGalacticLongitude(block.time);
-        if (!coords) return;
+        let coords = typeof getGalacticCoordinates === "function" ? getGalacticCoordinates(block.time) : null;
+        if (!coords || coords.l === null || coords.b === null) return;
 
         let l_deg = (coords.l % 360 + 360) % 360;
-        let correctedPowers = block.correctedPowers;
-        let numChannels = block.freqs.length;
-        if (numChannels < 2) return;
+        let b_deg = coords.b;
 
-        const deltaF = Math.abs(block.freqs[numChannels - 1] - block.freqs[0]) / (numChannels - 1);
+        let l_shifted = l_deg > 180 ? l_deg - 360 : l_deg;
+
+        let correctedPowers = block.correctedPowers;
+        let freqs = block.freqs;
+        if (!correctedPowers || !freqs || freqs.length < 2) return;
+
+        const deltaF = Math.abs(freqs[1] - freqs[0]);
         const deltaV = (deltaF / fRest) * c;
 
         let integratedSignalArea = 0;
-        for (let i = 0; i < numChannels; i++) {
-            if (block.freqs[i] < 1420.15 || block.freqs[i] > 1420.50) continue;
+        for (let i = 0; i < freqs.length; i++) {
+            if (freqs[i] < 1420.15 || freqs[i] > 1420.50) continue;
             if (correctedPowers[i] > 0.005) {
                 integratedSignalArea += correctedPowers[i] * deltaV;
             }
@@ -735,81 +801,137 @@ function renderColumnDensity() {
         let columnDensity = (1.823e18 * integratedSignalArea * CALIBRATION_GAIN_FACTOR) / 1e21;
 
         if (columnDensity > 0) {
-            densityProfile.push({
-                x: parseFloat(l_deg.toFixed(1)),
-                y: parseFloat(columnDensity.toFixed(3)),
-                time: block.time
-            });
+            if (columnDensity < minN) minN = columnDensity;
+            if (columnDensity > maxN) maxN = columnDensity;
+            tempPoints.push({ x: parseFloat(l_shifted.toFixed(1)), y: parseFloat(b_deg.toFixed(1)), density: columnDensity });
         }
     });
 
-    densityProfile.sort((a, b) => a.x - b.x);
+    if (tempPoints.length === 0) return;
+
+    // disk thickness from N_HI
+    const diskSummary = calculateDiskThickness(tempPoints, 250);
+    // console.log("Milky Way Disk Scale Thickness:", diskAnalysis);
+
+    const elDiskThickness = document.getElementById('statDiskThickness');
+    const elDiskFwhm = document.getElementById('statDiskFwhm');
+    const elDiskPeakN = document.getElementById('statDiskPeakN');
+    const elDiskPeakB = document.getElementById('statDiskPeakB');
+
+    // Bind Disk Structure metrics
+    if (diskSummary) {
+        if (elDiskThickness) elDiskThickness.innerText = diskSummary.diskThicknessPC ?? "--";
+        if (elDiskFwhm) elDiskFwhm.innerText = diskSummary.angularFwhmDeg ?? "--";
+        if (elDiskPeakN) elDiskPeakN.innerText = diskSummary.peakDensityNHI ?? "--";
+        if (elDiskPeakB) elDiskPeakB.innerText = diskSummary.peakLatitudeDeg ?? "--";
+    }
+
+    const range = maxN - minN || 1;
+
+    tempPoints.forEach((pt) => {
+        scatterData.push({ x: pt.x, y: pt.y, density: pt.density });
+        const norm = Math.min(Math.max((pt.density - minN) / range, 0), 1);
+
+        const rgb = getPlasmaColor(norm);
+        pointColors.push(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+    });
 
     const canvas = document.getElementById("densityChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
     if (typeof densityChart !== 'undefined' && densityChart) {
-        densityChart.data.datasets[0].data = densityProfile;
-        densityChart.update();
-        return;
+        densityChart.destroy();
     }
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, "rgba(37, 99, 235, 0.35)");
-    gradient.addColorStop(1, "rgba(37, 99, 235, 0.0)");
+
+    const htmlColorBarPlugin = {
+        id: 'htmlColorBar',
+        afterRender(chart) {
+            const container = chart.canvas.parentElement;
+
+            container.style.position = 'relative';
+
+            let legendDiv = document.getElementById('chartjs-plasma-legend');
+
+            if (!legendDiv) {
+                legendDiv = document.createElement('div');
+                legendDiv.id = 'chartjs-plasma-legend';
+
+                legendDiv.style.position = 'absolute';
+                legendDiv.style.top = '10px';
+                legendDiv.style.right = '40px';
+                legendDiv.style.width = '180px';
+                legendDiv.style.padding = '8px';
+                legendDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                legendDiv.style.border = '1px solid #e2e8f0';
+                legendDiv.style.borderRadius = '6px';
+                legendDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                legendDiv.style.fontFamily = 'sans-serif';
+                legendDiv.style.zIndex = '10';
+                container.appendChild(legendDiv);
+            }
+
+            legendDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; color: #475569; font-size: 10px; font-weight: 600; margin-bottom: 4px;">
+                <span>${minN.toFixed(1)}</span>
+                <span style="color: #64748b; font-weight: normal;">N_HI (10²¹ cm⁻²)</span>
+                <span>${maxN.toFixed(1)}</span>
+            </div>
+            <div style="
+                width: 100%; 
+                height: 8px; 
+                border-radius: 2px; 
+                background: linear-gradient(to right, 
+                    rgb(13,8,135), rgb(75,3,161), rgb(126,3,168), 
+                    rgb(168,34,150), rgb(203,70,121), rgb(231,115,87), 
+                    rgb(248,166,58), rgb(240,249,33));
+            "></div>
+        `;
+        }
+    };
+
 
     densityChart = new Chart(ctx, {
-        type: "line",
+        type: "scatter",
         data: {
             datasets: [
                 {
-                    label: "HI Column Density",
-                    data: densityProfile,
-                    backgroundColor: gradient,
-                    borderColor: "#2563eb",
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: "#2563eb",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 2,
-                    fill: true,
-                    tension: 0.35
+                    label: "HI Column Density (N_HI)",
+                    data: scatterData,
+                    backgroundColor: pointColors,
+                    // borderColor: "#ffffff",
+                    borderWidth: 1,
+                    pointRadius: 4.5,
+                    pointHoverRadius: 6.5
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: "nearest",
-                intersect: false
-            },
+            interaction: { mode: "nearest", intersect: false },
             scales: {
                 x: {
                     type: "linear",
-                    min: 0,
-                    max: 360,
-                    ticks: { stepSize: 45, color: "#64748b", font: { size: 11 } },
+                    min: -180,
+                    max: 180,
+                    reverse: true,
                     grid: { color: "#f1f5f9", drawBorder: false },
-                    title: {
-                        display: true,
-                        text: "Galactic Longitude l (°)",
-                        color: "#334155",
-                        font: { size: 12, weight: "600" }
-                    }
+                    ticks: {
+                        stepSize: 45,
+                        color: "#64748b",
+                        font: { size: 11 },
+                        callback: (val) => `${val < 0 ? val + 360 : val}°`
+                    },
+                    title: { display: true, text: "Galactic Longitude l (°)", color: "#334155", font: { size: 12, weight: "600" } }
                 },
                 y: {
-                    beginAtZero: true,
-                    ticks: { color: "#64748b", font: { size: 11 } },
+                    min: -90,
+                    max: 90,
                     grid: { color: "#f1f5f9", drawBorder: false },
-                    title: {
-                        display: true,
-                        text: "N_HI (×10²¹ cm⁻²)",
-                        color: "#334155",
-                        font: { size: 12, weight: "600" }
-                    }
+                    ticks: { stepSize: 30, color: "#64748b", font: { size: 11 }, callback: (val) => `${val}°` },
+                    title: { display: true, text: "Galactic Latitude b (°)", color: "#334155", font: { size: 12, weight: "600" } }
                 }
             },
             plugins: {
@@ -820,16 +942,22 @@ function renderColumnDensity() {
                     bodyColor: "#f8fafc",
                     padding: 10,
                     cornerRadius: 6,
-                    displayColors: false,
                     callbacks: {
-                        title: (items) => `Galactic Longitude: ${items[0].parsed.x}°`,
-                        label: (ctx) => `N_HI: ${ctx.parsed.y} ×10²¹ cm⁻²`
+                        title: (items) => {
+                            const rawX = items[0].parsed.x;
+                            const displayX = rawX < 0 ? rawX + 360 : rawX;
+                            return `l: ${displayX.toFixed(1)}°, b: ${items[0].parsed.y.toFixed(1)}°`;
+                        },
+                        label: (ctx) => `N_HI: ${ctx.raw.density.toFixed(3)} ×10²¹ cm⁻²`
                     }
                 }
             }
-        }
+        },
+        plugins: [htmlColorBarPlugin]
     });
 }
+
+
 
 function calculateOortA_WNM(dLocal = 1.0, sin2lCutoff = 0.20, powerThreshold = 0.005, cnmFraction = 0.35, sharpnessCutoff = 0.002) {
     if (!globalBlocksCache || !globalBlocksCache.length) return null;
@@ -847,7 +975,7 @@ function calculateOortA_WNM(dLocal = 1.0, sin2lCutoff = 0.20, powerThreshold = 0
         let maxP = Math.max.apply(null, powers);
         if (maxP < 0.01) return;
 
-        let coords = getGalacticLongitude(block.time);
+        let coords = getGalacticCoordinates(block.time);
         if (!coords) return;
 
         let l_rad = coords.l * (Math.PI / 180);
@@ -907,6 +1035,28 @@ function calculateOortA_WNM(dLocal = 1.0, sin2lCutoff = 0.20, powerThreshold = 0
     };
 }
 
+function calculateGlobalMassFractions(phaseReportData) {
+    if (!phaseReportData || phaseReportData.length === 0) return null;
+
+    let totalCNM = 0;
+    let totalWNM = 0;
+
+    // Sum the calculated percent distributions across all recorded sky frames
+    phaseReportData.forEach(frame => {
+        totalCNM += frame.cnmPercent;
+        totalWNM += frame.wnmPercent;
+    });
+
+    const combined = totalCNM + totalWNM || 1;
+
+    return {
+        globalCNMShare: parseFloat(((totalCNM / combined) * 100).toFixed(1)),
+        globalWNMShare: parseFloat(((totalWNM / combined) * 100).toFixed(1)),
+        sampleSize: phaseReportData.length
+    };
+}
+
+
 function analyzeGasPhases(cnmFractionThreshold = 0.35, sharpnessThreshold = 0.002, powerFloor = 0.005) {
     if (!globalBlocksCache || !globalBlocksCache.length) return null;
 
@@ -925,7 +1075,7 @@ function analyzeGasPhases(cnmFractionThreshold = 0.35, sharpnessThreshold = 0.00
         let maxP = Math.max.apply(null, powers);
         if (maxP < 0.01) return;
 
-        let coords = getGalacticLongitude(block.time);
+        let coords = getGalacticCoordinates(block.time);
         let cnmPeakCutoff = maxP * cnmFractionThreshold;
 
         let cnmPower = 0, cnmVSum = 0;
@@ -988,6 +1138,20 @@ function analyzeGasPhases(cnmFractionThreshold = 0.35, sharpnessThreshold = 0.00
     };
 
     renderPhaseChartJS(phaseReport);
+
+    const massSummary = calculateGlobalMassFractions(phaseReport);
+
+    const elMassCNM = document.getElementById('statMassCNM');
+    const elMassWNM = document.getElementById('statMassWNM');
+    const elMassFrames = document.getElementById('statMassFrames');
+
+    if (massSummary) {
+        if (elMassCNM) elMassCNM.innerText = massSummary.globalCNMShare ?? "--";
+        if (elMassWNM) elMassWNM.innerText = massSummary.globalWNMShare ?? "--";
+        if (elMassFrames) elMassFrames.innerText = massSummary.sampleSize ?? "--";
+    }
+
+
     return summary;
 }
 
@@ -998,12 +1162,9 @@ function renderPhaseChartJS(data) {
     if (!canvas) {
         const container = document.createElement("div");
         container.className = "chart-wrapper";
-
         canvas = document.createElement("canvas");
         canvas.id = canvasId;
         container.appendChild(canvas);
-
-        // Appends to card wrapper if available, otherwise fallback to body
         const targetParent = document.getElementById("phaseCard") || document.body;
         targetParent.appendChild(container);
     }
@@ -1025,22 +1186,18 @@ function renderPhaseChartJS(data) {
     }
 
     phaseChartInstance = new Chart(ctx, {
-        type: "bar",
+        type: "line",
         data: {
             labels: labels,
             datasets: [
                 {
                     label: "Kinematic Shear |Δv|",
-                    type: "line",
                     data: shearData,
                     borderColor: "#f59e0b",
-                    backgroundColor: "#f59e0b",
+                    backgroundColor: "transparent",
                     borderWidth: 2,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: "#f59e0b",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 2,
                     tension: 0.35,
                     yAxisID: "yShear",
                     order: 1
@@ -1048,20 +1205,26 @@ function renderPhaseChartJS(data) {
                 {
                     label: "CNM % (Cold)",
                     data: cnmData,
+                    borderColor: "transparent",
                     backgroundColor: "#06b6d4",
-                    borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 },
-                    stack: "phaseStack",
+                    fill: true,
+                    stacked: "phaseStack",
+                    pointRadius: 0,
+                    tension: 0.1,
                     yAxisID: "yPhase",
                     order: 2
                 },
                 {
                     label: "WNM % (Warm)",
                     data: wnmData,
+                    borderColor: "transparent",
                     backgroundColor: "#475569",
-                    borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
-                    stack: "phaseStack",
+                    fill: true,
+                    stacked: "phaseStack",
+                    pointRadius: 0,
+                    tension: 0.1,
                     yAxisID: "yPhase",
-                    order: 2
+                    order: 3
                 }
             ]
         },
@@ -1071,7 +1234,6 @@ function renderPhaseChartJS(data) {
             interaction: { mode: "index", intersect: false },
             scales: {
                 x: {
-                    stacked: true,
                     ticks: { color: "#64748b", font: { size: 11 }, maxRotation: 45 },
                     grid: { color: "#f1f5f9", drawBorder: false },
                     title: {
@@ -1085,8 +1247,8 @@ function renderPhaseChartJS(data) {
                     type: "linear",
                     position: "left",
                     stacked: true,
-                    min: 0,
-                    max: 100,
+                    // min: 0,
+                    // max: 100,
                     ticks: { color: "#64748b", font: { size: 11 } },
                     grid: { color: "#f1f5f9", drawBorder: false },
                     title: {
@@ -1099,7 +1261,7 @@ function renderPhaseChartJS(data) {
                 yShear: {
                     type: "linear",
                     position: "right",
-                    min: 0,
+                    // min: 0,
                     ticks: { color: "#d97706", font: { size: 11 } },
                     grid: { drawOnChartArea: false, drawBorder: false },
                     title: {
@@ -1125,10 +1287,11 @@ function renderPhaseChartJS(data) {
                     callbacks: {
                         title: (items) => `Galactic Longitude: ${items[0].label}`,
                         label: (ctx) => {
-                            if (ctx.dataset.type === "line") {
-                                return `Kinematic Shear: ${ctx.parsed.y} km/s`;
+                            const val = ctx.parsed.y;
+                            if (ctx.datasetIndex === 0) {
+                                return `Kinematic Shear: ${val} km/s`;
                             }
-                            return `${ctx.dataset.label}: ${ctx.parsed.y}%`;
+                            return `${ctx.dataset.label}: ${val}%`;
                         }
                     }
                 }

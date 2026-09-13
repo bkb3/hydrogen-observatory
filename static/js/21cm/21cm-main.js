@@ -155,10 +155,10 @@ async function loadAndPlotData(forceReload = false) {
             const elOortDev = document.getElementById('statOortDev');
             const elOortFrames = document.getElementById('statOortFrames');
 
-            if (elOortA) elOortA.innerText = summary.oortA ?? "--";
-            if (elOortIAU) elOortIAU.innerText = summary.iauStandard ?? "--";
-            if (elOortDev) elOortDev.innerText = summary.deviationPct ?? "--";
-            if (elOortFrames) elOortFrames.innerText = summary.cleanFrames ?? summary.deviationPct ?? "--";
+            if (elOortA) elOortA.innerText = summary?.oortA ?? "--";
+            if (elOortIAU) elOortIAU.innerText = summary?.iauStandard ?? "--";
+            if (elOortDev) elOortDev.innerText = summary?.deviationPct ?? "--";
+            if (elOortFrames) elOortFrames.innerText = summary?.cleanFrames ?? summary?.deviationPct ?? "--";
         }
 
         if (typeof renderColumnDensity === "function") renderColumnDensity();

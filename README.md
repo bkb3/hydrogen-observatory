@@ -20,7 +20,7 @@ The observatory uses a transit-mount setup relying on Earth's rotation to sweep 
 ### Offset tuning
 Due to the inherent central DC spike in SDR and anti-aliasing filter attenuation at the band edges, only a narrow passband (approximately 400 kHz) remains flat and usable towards either side of the spike. Offset tuning shifts the local oscillator away from the rest frequency, placing the 21 cm HI line squarely in the middle of this flat, well-behaved region. This prevents baseline distortion and makes it easier for baseline fitting and removal. This offset frequency is read form the logs and displayed.
 
-<img src="images/spectrum.png" width="50%" alt="DC spike, filter attenuation at band edges and offset tuning">
+<img src="images/spectrum.png"  alt="DC spike, filter attenuation at band edges and offset tuning">
 
 
 
