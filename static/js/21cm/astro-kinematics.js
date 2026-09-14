@@ -440,7 +440,7 @@ function drawTelescopeLineOfSight(timestampStr = null) {
         if (timeMatch) shortTime = timeMatch[1];
     } catch (e) { }
 
-    const labelText = `Az 180Â° El 30Â° | l = ${lDeg.toFixed(1)}Â° | ${shortTime} UTC`;
+    const labelText = `Az 180° El 30° | l = ${lDeg.toFixed(1)}° | ${shortTime} UTC`;
 
     ctx.font = "600 10px system-ui, -apple-system, sans-serif";
     const textMetrics = ctx.measureText(labelText);
@@ -700,7 +700,7 @@ function renderRotationCurve() {
                             if (ctx.dataset.type === "line") {
                                 return `${ctx.dataset.label}: ${ctx.parsed.y} km/s`;
                             }
-                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}Â°)`;
+                            return `Observed R: ${ctx.parsed.x} kpc | V: ${ctx.parsed.y} km/s (l=${ctx.raw.l}°)`;
                         }
                     }
                 }
@@ -833,7 +833,8 @@ function renderColumnDensity() {
         const norm = Math.min(Math.max((pt.density - minN) / range, 0), 1);
 
         const rgb = getPlasmaColor(norm);
-        pointColors.push(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+        const alpha = 0.7; 
+        pointColors.push(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
     });
 
     const canvas = document.getElementById("densityChart");
@@ -901,6 +902,7 @@ function renderColumnDensity() {
                     data: scatterData,
                     backgroundColor: pointColors,
                     // borderColor: "#ffffff",
+                    borderColor: "transparent",
                     borderWidth: 1,
                     pointRadius: 4.5,
                     pointHoverRadius: 6.5
