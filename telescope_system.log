@@ -87,3 +87,238 @@ Moving to tomorrow's nested calendar directory...
 🛰️ Initiating core background logging loop for 2026-09-13...
 🔔 Midnight reached! Compressing data for 2026-09-13...
 Committing full day's data and local directory changes for 2026-09-13...
+[main fde452f] Auto daily spectrum upload and updates: 2026-09-13
+ 4 files changed, 16 insertions(+), 3 deletions(-)
+ create mode 100644 2026/09/13/hydrogen.dat.gz
+ create mode 100644 2026/09/13/scan.log.gz
+To github.com:bkb3/hydrogen-observatory.git
+   e2f96e0..fde452f  main -> main
+Moving to tomorrow's nested calendar directory...
+🛰️ Initiating core background logging loop for 2026-09-14...
+Terminated
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+✅ Found Target SDR at Index: 0
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-09-14...
+Terminated
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen/telescope_system.log: Permission denied
+✅ Found Target SDR at Index: 0
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-09-14...
+Terminated
+✅ Found Target SDR at Index: 0
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-09-14...
+🔔 Midnight reached! Compressing data for 2026-09-14...
+Committing full day's data and local directory changes for 2026-09-14...
