@@ -1,5 +1,5 @@
 async function fetchAndParseScanLog(dateParts) {
-    const basePath = `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan.log`;
+    const basePath = `data/${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/scan.log`;
     const logMetricsMap = new Map();
 
     try {

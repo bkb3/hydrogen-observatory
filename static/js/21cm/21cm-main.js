@@ -15,7 +15,7 @@ async function loadAndPlotData(forceReload = false) {
     if (dateParts.length !== 3) return;
 
     const [year, month, day] = dateParts;
-    const basePath = `${year}/${month}/${day}/hydrogen.dat`;
+    const basePath = `data/${year}/${month}/${day}/hydrogen.dat`;
 
     try {
         // Parallel fetch for compressed raw spectrum data and scan log

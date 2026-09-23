@@ -146,7 +146,7 @@ function viewDailyScanLog(fileName = "scan.log", logTitleOverride = null) {
 
     const basePath = isSystemLog
         ? baseLogName
-        : `${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/${baseLogName}`;
+        : `data/${dateParts[0]}/${dateParts[1]}/${dateParts[2]}/${baseLogName}`;
 
     fetchAndDisplayLog(`${basePath}.gz`, displayTitle)
         .catch(() => fetchAndDisplayLog(basePath, displayTitle))
@@ -333,4 +333,3 @@ function getBatlowColor(norm) {
         b: batlowLUT[idx + 2]
     };
 }
-

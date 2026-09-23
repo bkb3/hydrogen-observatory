@@ -3,7 +3,7 @@
 # Clean up subprocesses on SIGINT or SIGTERM
 trap 'pkill -x rtl_power_fftw 2>/dev/null; exit 0' SIGINT SIGTERM EXIT
 
-BASE_DIR="/mnt/usb_data/radio_astronomy/hydrogen"
+BASE_DIR="/mnt/usb_data/radio_astronomy/hydrogen/"
 cd "$BASE_DIR" || exit 1
 
 # Target SDR Serial Number
@@ -31,7 +31,7 @@ while true; do
     MONTH=$(date -u +"%m")
     DAY=$(date -u +"%d")
 
-    TARGET_DIR="${BASE_DIR}/${YEAR}/${MONTH}/${DAY}"
+    TARGET_DIR="${BASE_DIR}/data/${YEAR}/${MONTH}/${DAY}"
     mkdir -p "$TARGET_DIR"
 
     DATA_FILE="${TARGET_DIR}/hydrogen.dat"

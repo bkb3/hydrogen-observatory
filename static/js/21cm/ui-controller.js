@@ -366,7 +366,6 @@ function renderWaterfallFull() {
     if (waterfallMax && typeof globalMax !== "undefined") {
         waterfallMax.textContent = `Max: ${globalMax.toFixed(3)} dB`;
     }
-    // -------------------------------------------
 
     const canvas = document.getElementById("waterfallCanvas");
     const ctx = canvas.getContext("2d");
@@ -486,4 +485,3 @@ function toggleAutoRefresh() {
 //         renderWaterfallFull();
 //     }
 // });
-
