@@ -797,3 +797,47 @@ Terminated
 🛰️ Initiating core background logging loop for 2026-09-22...
 🔔 Midnight reached! Compressing data for 2026-09-22...
 Committing full day's data and local directory changes for 2026-09-22...
+[main 4c66992] Auto daily spectrum upload and updates: 2026-09-22
+ 43 files changed, 85 insertions(+), 9 deletions(-)
+ delete mode 100644 2026/09/04/hydrogen.dat.gz
+ delete mode 100644 2026/09/04/scan.log.gz
+ delete mode 100644 2026/09/05/hydrogen.dat.gz
+ delete mode 100644 2026/09/05/scan.log.gz
+ delete mode 100644 2026/09/06/hydrogen.dat.gz
+ delete mode 100644 2026/09/06/scan.log.gz
+ delete mode 100644 2026/09/07/hydrogen.dat.gz
+ delete mode 100644 2026/09/07/scan.log.gz
+ delete mode 100644 2026/09/08/hydrogen.dat.gz
+ delete mode 100644 2026/09/08/scan.log.gz
+ delete mode 100644 2026/09/09/hydrogen.dat.gz
+ delete mode 100644 2026/09/09/scan.log.gz
+ delete mode 100644 2026/09/10/hydrogen.dat.gz
+ delete mode 100644 2026/09/10/scan.log.gz
+ delete mode 100644 2026/09/11/hydrogen.dat.gz
+ delete mode 100644 2026/09/11/scan.log.gz
+ delete mode 100644 2026/09/12/hydrogen.dat.gz
+ delete mode 100644 2026/09/12/scan.log.gz
+ delete mode 100644 2026/09/13/hydrogen.dat.gz
+ delete mode 100644 2026/09/13/scan.log.gz
+ delete mode 100644 2026/09/14/hydrogen.dat.gz
+ delete mode 100644 2026/09/14/scan.log.gz
+ delete mode 100644 2026/09/15/hydrogen.dat.gz
+ delete mode 100644 2026/09/15/scan.log.gz
+ delete mode 100644 2026/09/16/hydrogen.dat.gz
+ delete mode 100644 2026/09/16/scan.log.gz
+ delete mode 100644 2026/09/17/hydrogen.dat.gz
+ delete mode 100644 2026/09/17/scan.log.gz
+ delete mode 100644 2026/09/18/hydrogen.dat.gz
+ delete mode 100644 2026/09/18/scan.log.gz
+ delete mode 100644 2026/09/19/hydrogen.dat.gz
+ delete mode 100644 2026/09/19/scan.log.gz
+ delete mode 100644 2026/09/20/hydrogen.dat.gz
+ delete mode 100644 2026/09/20/scan.log.gz
+ create mode 100644 data/2026/09/22/hydrogen.dat.gz
+ create mode 100644 data/2026/09/22/scan.log.gz
+To github.com:bkb3/hydrogen-observatory.git
+   45549d2..4c66992  main -> main
+Moving to tomorrow's nested calendar directory...
+🛰️ Initiating core background logging loop for 2026-09-23...
+🔔 Midnight reached! Compressing data for 2026-09-23...
+Committing full day's data and local directory changes for 2026-09-23...
