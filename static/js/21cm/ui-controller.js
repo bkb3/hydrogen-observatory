@@ -37,7 +37,7 @@ function renderSingleFrame(frameIndex) {
         ? `${block.metrics.freqStr} \n ---`
         : `${block.metrics.freqStr} \n ${velocity > 0 ? "+" : ""}${velocity.toFixed(0)} km/s`;
 
-    renderChart(block.freqs, block.cleanedPowers, block.fittedBaseline, block.correctedPowers, block.time);
+    renderChart(block.freqs, block.rawPowers, block.fittedBaseline, block.correctedPowers, block.time);
     renderGalactic2DMap(true);
     drawTelescopeLineOfSight(block.time);
     renderWaterfallFull();
@@ -401,7 +401,7 @@ function renderWaterfallFull() {
         ctx.lineTo(0, activeY + 4);
         ctx.closePath();
         ctx.fill();
-        ctx.restore();
+        // ctx.restore();
 
         // Left triangle pointer (pointing right)
         ctx.fillStyle = "#ef4444";

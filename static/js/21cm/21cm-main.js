@@ -41,6 +41,7 @@ async function loadAndPlotData(forceReload = false) {
 
             if (line.startsWith("# Acquisition start:")) {
                 if (currentFreqs.length > 0) {
+                    let rawPristine = [...currentPowers]; // Capture true raw data
                     let cleaned = cleanSpikesFilter(currentPowers);
                     let { fittedBaseline, correctedPowers } = processBaseline(currentFreqs, cleaned);
                     let metrics = typeof calculateSmartMetrics === "function" ? calculateSmartMetrics(currentFreqs, correctedPowers) : {};
@@ -53,8 +54,8 @@ async function loadAndPlotData(forceReload = false) {
                         integrationTime: logData?.integrationTime ?? "N/A",
                         freqs: currentFreqs,
                         frequencies: currentFreqs,
-                        powers: currentPowers,
-                        rawPowers: currentPowers,
+                        powers: rawPristine,       // True raw data
+                        rawPowers: rawPristine,    // True raw data
                         cleanedPowers: cleaned,
                         fittedBaseline: fittedBaseline,
                         baselinePowers: fittedBaseline,
@@ -87,6 +88,7 @@ async function loadAndPlotData(forceReload = false) {
 
         // Flush last remaining frame block
         if (currentFreqs.length > 0) {
+            let rawPristine = [...currentPowers]; // Capture true raw data
             let cleaned = cleanSpikesFilter(currentPowers);
             let { fittedBaseline, correctedPowers } = processBaseline(currentFreqs, cleaned);
             let metrics = typeof calculateSmartMetrics === "function" ? calculateSmartMetrics(currentFreqs, correctedPowers) : {};
@@ -99,8 +101,8 @@ async function loadAndPlotData(forceReload = false) {
                 integrationTime: logData?.integrationTime ?? "N/A",
                 freqs: currentFreqs,
                 frequencies: currentFreqs,
-                powers: currentPowers,
-                rawPowers: currentPowers,
+                powers: rawPristine,       // True raw data
+                rawPowers: rawPristine,    // True raw data
                 cleanedPowers: cleaned,
                 fittedBaseline: fittedBaseline,
                 baselinePowers: fittedBaseline,
@@ -210,5 +212,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bindEventListeners();
     loadAndPlotData();
-    
+
 });

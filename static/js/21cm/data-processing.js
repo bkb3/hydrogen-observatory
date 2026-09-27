@@ -48,23 +48,142 @@ async function fetchAndParseScanLog(dateParts) {
     return logMetricsMap;
 }
 
+// function cleanSpikesFilter(powerArray) {
+//     if (powerArray.length < 5) return powerArray;
+//     let cleanedArray = [...powerArray];
+//     for (let i = 2; i < powerArray.length - 2; i++) {
+//         let neighborhood = [
+//             powerArray[i - 2],
+//             powerArray[i - 1],
+//             powerArray[i],
+//             powerArray[i + 1],
+//             powerArray[i + 2]
+//         ];
+//         neighborhood.sort((a, b) => a - b);
+//         cleanedArray[i] = neighborhood[2];
+//     }
+
+//     return cleanedArray;
+// }
+
 function cleanSpikesFilter(powerArray) {
-    if (powerArray.length < 5) return powerArray;
-    let cleanedArray = [...powerArray];
-    for (let i = 2; i < powerArray.length - 2; i++) {
-        let neighborhood = [
-            powerArray[i - 2],
-            powerArray[i - 1],
-            powerArray[i],
-            powerArray[i + 1],
-            powerArray[i + 2]
-        ];
-        neighborhood.sort((a, b) => a - b);
-        cleanedArray[i] = neighborhood[2];
+    if (powerArray.length < 7) return [...powerArray];
+
+    const windowSize = 11;
+    const halfWindow = Math.floor(windowSize / 2);
+
+    function median(values) {
+        const sorted = [...values].sort((a, b) => a - b);
+        const middle = Math.floor(sorted.length / 2);
+
+        return sorted.length % 2
+            ? sorted[middle]
+            : (sorted[middle - 1] + sorted[middle]) / 2;
     }
-    
-    return cleanedArray;
+
+    // Pass 1: Initial rough median baseline
+    const baseline = new Array(powerArray.length);
+
+    for (let i = 0; i < powerArray.length; i++) {
+        const start = Math.max(0, i - halfWindow);
+        const end = Math.min(powerArray.length, i + halfWindow + 1);
+
+        baseline[i] = median(powerArray.slice(start, end));
+    }
+
+    // Identify spike candidates
+    const residuals = powerArray.map(
+        (val, i) => val - baseline[i]
+    );
+
+    const resMedian = median(residuals);
+
+    const resMAD = median(
+        residuals.map(v => Math.abs(v - resMedian))
+    );
+
+    const limit = Math.max(
+        resMAD * 1.4826 * 4.0,
+        0.000001
+    );
+
+    // Mask obvious spike samples
+    const maskedArray = [...powerArray];
+
+    for (let i = 0; i < powerArray.length; i++) {
+        if (residuals[i] > limit) {
+            maskedArray[i] = baseline[i];
+        }
+    }
+
+    // Recalculate clean baseline
+    const finalBaseline = new Array(powerArray.length);
+
+    for (let i = 0; i < powerArray.length; i++) {
+        const start = Math.max(0, i - halfWindow);
+        const end = Math.min(powerArray.length, i + halfWindow + 1);
+
+        finalBaseline[i] = median(
+            maskedArray.slice(start, end)
+        );
+    }
+
+    const cleaned = [...powerArray];
+    const spikeRegions = [];
+
+    // Find complete spike regions
+    for (let i = 0; i < powerArray.length; i++) {
+        if (powerArray[i] - finalBaseline[i] <= limit) {
+            continue;
+        }
+
+        let start = i;
+        let end = i;
+
+        // Grow left: include any adjacent point where the slope is steeply rising or still elevated
+        while (start > 0) {
+            const currentDev = powerArray[start] - finalBaseline[start];
+            const prevDev = powerArray[start - 1] - finalBaseline[start - 1];
+
+            // Stop if the previous point is flat relative to baseline or slope turns downward
+            if (prevDev <= limit * 0.1 || prevDev >= currentDev) break;
+            start--;
+        }
+
+        // Grow right: include any adjacent point on the downward slope
+        while (end < powerArray.length - 1) {
+            const currentDev = powerArray[end] - finalBaseline[end];
+            const nextDev = powerArray[end + 1] - finalBaseline[end + 1];
+
+            if (nextDev <= limit * 0.1 || nextDev >= currentDev) break;
+            end++;
+        }
+
+        spikeRegions.push([start, end]);
+        i = end;
+    }
+
+    // Remove entire spike regions with smooth baseline interpolation
+    for (const [start, end] of spikeRegions.range ? spikeRegions : spikeRegions) {
+        // Step out 1 extra bin on each side to grab clean baseline points
+        const left = Math.max(0, start - 2);
+        const right = Math.min(powerArray.length - 1, end + 2);
+
+        const leftValue = finalBaseline[left];
+        const rightValue = finalBaseline[right];
+        const span = right - left;
+
+        for (let i = start; i <= end; i++) {
+            const t = span > 0 ? (i - left) / span : 0;
+            // Linearly bridge the gap completely bypassing the flat peak zone
+            cleaned[i] = leftValue + (rightValue - leftValue) * t;
+        }
+    }
+
+    return cleaned;
+
 }
+
 
 
 function solveCubicSystem(matrixA, vectorB) {
