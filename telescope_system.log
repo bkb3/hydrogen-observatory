@@ -1060,3 +1060,30 @@ Terminated
 🛰️ Initiating core background logging loop for 2026-09-26...
 🔔 Midnight reached! Compressing data for 2026-09-26...
 Committing full day's data and local directory changes for 2026-09-26...
+[main 619d3d5] Auto daily spectrum upload and updates: 2026-09-26
+ 6 files changed, 266 insertions(+), 21 deletions(-)
+ create mode 100644 data/2026/09/26/hydrogen.dat.gz
+ create mode 100644 data/2026/09/26/scan.log.gz
+To github.com:bkb3/hydrogen-observatory.git
+   2d3fe55..619d3d5  main -> main
+Moving to tomorrow's nested calendar directory...
+🛰️ Initiating core background logging loop for 2026-09-27...
+Terminated
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-09-27...
+🔔 Midnight reached! Compressing data for 2026-09-27...
+Committing full day's data and local directory changes for 2026-09-27...

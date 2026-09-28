@@ -66,123 +66,140 @@ async function fetchAndParseScanLog(dateParts) {
 //     return cleanedArray;
 // }
 
-function cleanSpikesFilter(powerArray) {
-    if (powerArray.length < 7) return [...powerArray];
-
-    const windowSize = 11;
-    const halfWindow = Math.floor(windowSize / 2);
+function cleanSpikesFilter(data) {
+    const n = data.length;
+    if (n < 7) return [...data];
 
     function median(values) {
-        const sorted = [...values].sort((a, b) => a - b);
-        const middle = Math.floor(sorted.length / 2);
-
-        return sorted.length % 2
-            ? sorted[middle]
-            : (sorted[middle - 1] + sorted[middle]) / 2;
+        const a = [...values].sort((x, y) => x - y);
+        const m = Math.floor(a.length / 2);
+        return a.length % 2
+            ? a[m]
+            : (a[m - 1] + a[m]) / 2;
     }
 
-    // Pass 1: Initial rough median baseline
-    const baseline = new Array(powerArray.length);
+    // Automatically chosen local scale
+    const halfWindow = Math.max(
+        2,
+        Math.floor(Math.sqrt(n) / 2)
+    );
 
-    for (let i = 0; i < powerArray.length; i++) {
+    // Rolling median used only for detection
+    const baseline = new Array(n);
+
+    for (let i = 0; i < n; i++) {
         const start = Math.max(0, i - halfWindow);
-        const end = Math.min(powerArray.length, i + halfWindow + 1);
+        const end = Math.min(n, i + halfWindow + 1);
 
-        baseline[i] = median(powerArray.slice(start, end));
+        baseline[i] = median(data.slice(start, end));
     }
 
-    // Identify spike candidates
-    const residuals = powerArray.map(
-        (val, i) => val - baseline[i]
+    // Residuals
+    const residuals = data.map(
+        (v, i) => v - baseline[i]
     );
 
-    const resMedian = median(residuals);
+    const residualMedian = median(residuals);
 
-    const resMAD = median(
-        residuals.map(v => Math.abs(v - resMedian))
+    const mad = median(
+        residuals.map(v =>
+            Math.abs(v - residualMedian)
+        )
     );
 
-    const limit = Math.max(
-        resMAD * 1.4826 * 4.0,
-        0.000001
+    const noise = Math.max(
+        mad * 1.4826,
+        Number.EPSILON
     );
 
-    // Mask obvious spike samples
-    const maskedArray = [...powerArray];
+    const threshold = noise * 4;
 
-    for (let i = 0; i < powerArray.length; i++) {
-        if (residuals[i] > limit) {
-            maskedArray[i] = baseline[i];
-        }
-    }
+    const spike = residuals.map(
+        v => v > threshold
+    );
 
-    // Recalculate clean baseline
-    const finalBaseline = new Array(powerArray.length);
+    const cleaned = [...data];
 
-    for (let i = 0; i < powerArray.length; i++) {
-        const start = Math.max(0, i - halfWindow);
-        const end = Math.min(powerArray.length, i + halfWindow + 1);
+    let i = 0;
 
-        finalBaseline[i] = median(
-            maskedArray.slice(start, end)
-        );
-    }
-
-    const cleaned = [...powerArray];
-    const spikeRegions = [];
-
-    // Find complete spike regions
-    for (let i = 0; i < powerArray.length; i++) {
-        if (powerArray[i] - finalBaseline[i] <= limit) {
+    while (i < n) {
+        if (!spike[i]) {
+            i++;
             continue;
         }
 
-        let start = i;
-        let end = i;
+        const start = i;
 
-        // Grow left: include any adjacent point where the slope is steeply rising or still elevated
-        while (start > 0) {
-            const currentDev = powerArray[start] - finalBaseline[start];
-            const prevDev = powerArray[start - 1] - finalBaseline[start - 1];
-
-            // Stop if the previous point is flat relative to baseline or slope turns downward
-            if (prevDev <= limit * 0.1 || prevDev >= currentDev) break;
-            start--;
+        while (i < n && spike[i]) {
+            i++;
         }
 
-        // Grow right: include any adjacent point on the downward slope
-        while (end < powerArray.length - 1) {
-            const currentDev = powerArray[end] - finalBaseline[end];
-            const nextDev = powerArray[end + 1] - finalBaseline[end + 1];
+        const end = i - 1;
 
-            if (nextDev <= limit * 0.1 || nextDev >= currentDev) break;
-            end++;
+        if (start === 0 || end === n - 1) {
+            continue;
         }
 
-        spikeRegions.push([start, end]);
-        i = end;
-    }
+        // Extend to include the steep edges.
+        let left = start;
+        let right = end;
 
-    // Remove entire spike regions with smooth baseline interpolation
-    for (const [start, end] of spikeRegions.range ? spikeRegions : spikeRegions) {
-        // Step out 1 extra bin on each side to grab clean baseline points
-        const left = Math.max(0, start - 2);
-        const right = Math.min(powerArray.length - 1, end + 2);
+        const edgeThreshold = threshold * 0.15;
 
-        const leftValue = finalBaseline[left];
-        const rightValue = finalBaseline[right];
-        const span = right - left;
-
-        for (let i = start; i <= end; i++) {
-            const t = span > 0 ? (i - left) / span : 0;
-            // Linearly bridge the gap completely bypassing the flat peak zone
-            cleaned[i] = leftValue + (rightValue - leftValue) * t;
+        while (
+            left > 0 &&
+            data[left - 1] - baseline[left - 1] > edgeThreshold
+        ) {
+            left--;
         }
+
+        while (
+            right < n - 1 &&
+            data[right + 1] - baseline[right + 1] > edgeThreshold
+        ) {
+            right++;
+        }
+
+        // Use points outside the spike to establish
+        // the replacement line.
+        const leftIndex = Math.max(0, left - halfWindow);
+        const rightIndex = Math.min(n - 1, right + halfWindow);
+
+        const leftValue = median(
+            data.slice(leftIndex, left)
+        );
+
+        const rightValue = median(
+            data.slice(right + 1, rightIndex + 1)
+        );
+
+        // Fallback for boundaries
+        if (
+            !Number.isFinite(leftValue) ||
+            !Number.isFinite(rightValue)
+        ) {
+            i = end + 1;
+            continue;
+        }
+
+        // Replace the spike with a smooth bridge.
+        const span = right - left + 2;
+
+        for (let j = left; j <= right; j++) {
+            const t = (j - left + 1) / span;
+
+            cleaned[j] =
+                leftValue +
+                (rightValue - leftValue) * t;
+        }
+
+        i = end + 1;
     }
 
     return cleaned;
-
 }
+
+
 
 
 
