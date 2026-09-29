@@ -440,7 +440,7 @@ function drawTelescopeLineOfSight(timestampStr = null) {
         if (timeMatch) shortTime = timeMatch[1];
     } catch (e) { }
 
-    const labelText = `Az 180° El 30° | l = ${lDeg.toFixed(1)}° | ${shortTime} UTC`;
+    const labelText = `Az 180° El 30° | l = ${lDeg.toFixed(2)}° | ${shortTime} UTC`;
 
     ctx.font = "600 10px system-ui, -apple-system, sans-serif";
     const textMetrics = ctx.measureText(labelText);
@@ -553,8 +553,8 @@ function renderRotationCurve() {
                 if (R && R >= 2.0 && R <= 16.0 && V_R >= 130 && V_R <= 270) {
                     points.push({
                         x: parseFloat(R.toFixed(2)),
-                        y: parseFloat(Math.abs(V_R).toFixed(1)),
-                        l: l_deg.toFixed(1)
+                        y: parseFloat(Math.abs(V_R).toFixed(2)),
+                        l: l_deg.toFixed(2)
                     });
                 }
             }
@@ -578,7 +578,7 @@ function renderRotationCurve() {
         let midL = binMap[r].lList[Math.floor(binMap[r].lList.length / 2)];
         finalBinnedPoints.push({
             x: parseFloat(r),
-            y: parseFloat(avgV.toFixed(1)),
+            y: parseFloat(avgV.toFixed(2)),
             l: midL
         });
     }
@@ -595,12 +595,12 @@ function renderRotationCurve() {
 
     for (let r = 1.0; r <= 17.5; r += 0.5) {
         let vFlat = 220.0 * (1.0 - Math.exp(-r / R_scale));
-        flatModel.push({ x: r, y: parseFloat(vFlat.toFixed(1)) });
+        flatModel.push({ x: r, y: parseFloat(vFlat.toFixed(2)) });
 
         let vKepler = (r <= R_disk_edge)
             ? 220.0 * Math.sqrt(1.0 - Math.exp(-r / R_scale))
             : 220.0 * Math.sqrt(R_disk_edge / r);
-        keplerianModel.push({ x: r, y: parseFloat(vKepler.toFixed(1)) });
+        keplerianModel.push({ x: r, y: parseFloat(vKepler.toFixed(2)) });
     }
 
     const canvas = document.getElementById("rotationChart");
@@ -755,12 +755,11 @@ function calculateDiskThickness(tempPoints, distancePC = 250.0) {
         peakDensityNHI: parseFloat(maxDensity.toFixed(3)),
         peakLatitudeDeg: parseFloat(peakLatitude.toFixed(2)),
         angularFwhmDeg: parseFloat(fwhmDegrees.toFixed(2)),
-        diskThicknessPC: parseFloat(physicalThicknessPC.toFixed(1))
+        diskThicknessPC: parseFloat(physicalThicknessPC.toFixed(2))
     };
 }
 
-
-
+// uses l and b as x, y axis
 function renderColumnDensity() {
     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
 
@@ -771,6 +770,9 @@ function renderColumnDensity() {
 
     let minN = Infinity;
     let maxN = -Infinity;
+
+    let minTime = Infinity;
+    let maxTime = -Infinity;
 
     const tempPoints = [];
     globalBlocksCache.forEach((block) => {
@@ -803,7 +805,17 @@ function renderColumnDensity() {
         if (columnDensity > 0) {
             if (columnDensity < minN) minN = columnDensity;
             if (columnDensity > maxN) maxN = columnDensity;
-            tempPoints.push({ x: parseFloat(l_shifted.toFixed(1)), y: parseFloat(b_deg.toFixed(1)), density: columnDensity });
+            let itemTime = block.time ? new Date(block.time.replace(" UTC", "")).getTime() : idx;
+
+            if (itemTime < minTime) minTime = itemTime;
+            if (itemTime > maxTime) maxTime = itemTime;
+            tempPoints.push({
+                x: parseFloat(l_shifted.toFixed(2)),
+                y: parseFloat(b_deg.toFixed(2)),
+                density: columnDensity,
+                time: itemTime // store the parsed millisecond timestamp
+            });
+
         }
     });
 
@@ -829,11 +841,11 @@ function renderColumnDensity() {
     const range = maxN - minN || 1;
 
     tempPoints.forEach((pt) => {
-        scatterData.push({ x: pt.x, y: pt.y, density: pt.density });
+        scatterData.push({ x: pt.x, y: pt.y, density: pt.density, time:pt.time });
         const norm = Math.min(Math.max((pt.density - minN) / range, 0), 1);
 
         const rgb = getPlasmaColor(norm);
-        const alpha = 0.7; 
+        const alpha = 0.7;
         pointColors.push(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
     });
 
@@ -875,9 +887,9 @@ function renderColumnDensity() {
 
             legendDiv.innerHTML = `
             <div style="display: flex; justify-content: space-between; color: #475569; font-size: 10px; font-weight: 600; margin-bottom: 4px;">
-                <span>${minN.toFixed(1)}</span>
+                <span>${minN.toFixed(2)}</span>
                 <span style="color: #64748b; font-weight: normal;">N_HI (10²¹ cm⁻²)</span>
-                <span>${maxN.toFixed(1)}</span>
+                <span>${maxN.toFixed(2)}</span>
             </div>
             <div style="
                 width: 100%; 
@@ -889,6 +901,74 @@ function renderColumnDensity() {
                     rgb(248,166,58), rgb(240,249,33));
             "></div>
         `;
+        }
+    };
+
+    const fwhmMarkersPlugin = {
+        id: 'fwhmMarkers',
+        beforeDatasetsDraw(chart) {
+            if (!diskSummary || typeof diskSummary.angularFwhmDeg === 'undefined' || typeof diskSummary.peakLatitudeDeg === 'undefined') return;
+
+            const { ctx, chartArea, scales } = chart;
+            const peakB = parseFloat(diskSummary.peakLatitudeDeg);
+            const fwhm = parseFloat(diskSummary.angularFwhmDeg);
+            if (isNaN(peakB) || isNaN(fwhm)) return;
+
+            const valUpper = peakB + (fwhm / 2);
+            const valLower = peakB - (fwhm / 2);
+
+            const yPeak = scales.y.getPixelForValue(peakB);
+            const yUpper = scales.y.getPixelForValue(valUpper);
+            const yLower = scales.y.getPixelForValue(valLower);
+
+            ctx.save();
+            ctx.lineWidth = 1.5;
+            ctx.font = '600 9px sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'left';
+
+            const leftMarginOffset = chartArea.left + 8;
+
+            // FWHM Upper Bound line (Text above line)
+            if (yUpper >= chartArea.top && yUpper <= chartArea.bottom) {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, yUpper);
+                ctx.lineTo(chartArea.right, yUpper);
+                ctx.stroke();
+
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`FWHM Upper (${valUpper >= 0 ? '+' : ''}${valUpper.toFixed(2)}°)`, leftMarginOffset, yUpper - 2);
+            }
+
+            // FWHM Lower Bound line (Text below line)
+            if (yLower >= chartArea.top && yLower <= chartArea.bottom) {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, yLower);
+                ctx.lineTo(chartArea.right, yLower);
+                ctx.stroke();
+
+                ctx.textBaseline = 'top';
+                ctx.fillText(`FWHM Lower (${valLower >= 0 ? '+' : ''}${valLower.toFixed(2)}°)`, leftMarginOffset, yLower + 3);
+            }
+
+            // Peak Galactic Centerline (Text above line)
+            if (yPeak >= chartArea.top && yPeak <= chartArea.bottom) {
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, yPeak);
+                ctx.lineTo(chartArea.right, yPeak);
+                ctx.stroke();
+
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`Peak (${peakB >= 0 ? '+' : ''}${peakB.toFixed(2)}°)`, leftMarginOffset, yPeak - 2);
+            }
+
+            ctx.restore();
         }
     };
 
@@ -947,18 +1027,327 @@ function renderColumnDensity() {
                     callbacks: {
                         title: (items) => {
                             const rawX = items[0].parsed.x;
+                            const rawY = items[0].parsed.y;
                             const displayX = rawX < 0 ? rawX + 360 : rawX;
-                            return `l: ${displayX.toFixed(1)}°, b: ${items[0].parsed.y.toFixed(1)}°`;
+
+                            // Extract the stored timestamp value from raw item data
+                            const rawTime = items[0].raw.time;
+                            let timeString = "--:--:--";
+
+                            if (rawTime) {
+                                const d = new Date(rawTime);
+                                const hh = String(d.getUTCHours()).padStart(2, '0');
+                                const mm = String(d.getUTCMinutes()).padStart(2, '0');
+                                const ss = String(d.getUTCSeconds()).padStart(2, '0');
+                                timeString = `${hh}:${mm}:${ss} UTC`;
+                            }
+
+                            return `l: ${displayX.toFixed(2)}°, b: ${rawY.toFixed(2)}°, t: ${timeString}`;
                         },
-                        label: (ctx) => `N_HI: ${ctx.raw.density.toFixed(3)} ×10²¹ cm⁻²`
                     }
                 }
             }
         },
-        plugins: [htmlColorBarPlugin]
+        plugins: [htmlColorBarPlugin, fwhmMarkersPlugin]
     });
 }
 
+
+// uses time as x axis
+// function renderColumnDensity() {
+//     if (!globalBlocksCache || globalBlocksCache.length === 0) return;
+
+//     const c = 299792.458;
+//     const fRest = 1420.405751;
+//     const scatterData = [];
+//     const pointColors = [];
+
+//     let minN = Infinity;
+//     let maxN = -Infinity;
+
+//     const tempPoints = [];
+//     let minTime = Infinity;
+//     let maxTime = -Infinity;
+
+//     globalBlocksCache.forEach((block, idx) => {
+//         let coords = typeof getGalacticCoordinates === "function" ? getGalacticCoordinates(block.time) : null;
+//         if (!coords || coords.l === null || coords.b === null) return;
+
+//         let l_deg = (coords.l % 360 + 360) % 360;
+//         let b_deg = coords.b;
+
+//         let l_shifted = l_deg > 180 ? l_deg - 360 : l_deg;
+
+//         let correctedPowers = block.correctedPowers;
+//         let freqs = block.freqs;
+//         if (!correctedPowers || !freqs || freqs.length < 2) return;
+
+//         // Typo fix: accurately track the spectral gap array indices
+//         const deltaF = Math.abs(freqs[1] - freqs[0]);
+//         const deltaV = (deltaF / fRest) * c;
+
+//         let integratedSignalArea = 0;
+//         for (let i = 0; i < freqs.length; i++) {
+//             if (freqs[i] < 1420.15 || freqs[i] > 1420.50) continue;
+//             if (correctedPowers[i] > 0.005) {
+//                 integratedSignalArea += correctedPowers[i] * deltaV;
+//             }
+//         }
+//         // console.log(block.time)
+//         const CALIBRATION_GAIN_FACTOR = 400.0;
+//         let columnDensity = (1.823e18 * integratedSignalArea * CALIBRATION_GAIN_FACTOR) / 1e21;
+
+//         if (columnDensity > 0) {
+//             if (columnDensity < minN) minN = columnDensity;
+//             if (columnDensity > maxN) maxN = columnDensity;
+
+//             // Parse the string into milliseconds so Chart.js can plot it linearly
+//             let itemTime = block.time ? new Date(block.time.replace(" UTC", "")).getTime() : idx;
+
+//             if (itemTime < minTime) minTime = itemTime;
+//             if (itemTime > maxTime) maxTime = itemTime;
+
+//             tempPoints.push({
+//                 x: itemTime,
+//                 y: parseFloat(b_deg.toFixed(2)),
+//                 density: columnDensity,
+//                 l_disp: parseFloat(l_shifted.toFixed(2))
+//             });
+//         }
+//     });
+
+//     if (tempPoints.length === 0) return;
+
+//     const diskSummary = calculateDiskThickness(tempPoints.map(pt => ({ x: pt.l_disp, y: pt.y, density: pt.density })), 250);
+
+//     const elDiskThickness = document.getElementById('statDiskThickness');
+//     const elDiskFwhm = document.getElementById('statDiskFwhm');
+//     const elDiskPeakN = document.getElementById('statDiskPeakN');
+//     const elDiskPeakB = document.getElementById('statDiskPeakB');
+
+//     if (diskSummary) {
+//         if (elDiskThickness) elDiskThickness.innerText = diskSummary.diskThicknessPC ?? "--";
+//         if (elDiskFwhm) elDiskFwhm.innerText = diskSummary.angularFwhmDeg ?? "--";
+//         if (elDiskPeakN) elDiskPeakN.innerText = diskSummary.peakDensityNHI ?? "--";
+//         if (elDiskPeakB) elDiskPeakB.innerText = diskSummary.peakLatitudeDeg ?? "--";
+//     }
+
+//     const range = maxN - minN || 1;
+
+//     tempPoints.forEach((pt) => {
+//         scatterData.push({ x: pt.x, y: pt.y, density: pt.density, l_disp: pt.l_disp });
+//         const norm = Math.min(Math.max((pt.density - minN) / range, 0), 1);
+
+//         const rgb = getPlasmaColor(norm);
+//         const alpha = 0.7;
+//         pointColors.push(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
+//     });
+
+//     const canvas = document.getElementById("densityChart");
+//     if (!canvas) return;
+//     const ctx = canvas.getContext("2d");
+
+//     if (typeof densityChart !== 'undefined' && densityChart) {
+//         densityChart.destroy();
+//     }
+
+//     const htmlColorBarPlugin = {
+//         id: 'htmlColorBar',
+//         afterRender(chart) {
+//             const container = chart.canvas.parentElement;
+//             container.style.position = 'relative';
+//             let legendDiv = document.getElementById('chartjs-plasma-legend');
+
+//             if (!legendDiv) {
+//                 legendDiv = document.createElement('div');
+//                 legendDiv.id = 'chartjs-plasma-legend';
+//                 legendDiv.style.position = 'absolute';
+//                 legendDiv.style.top = '10px';
+//                 legendDiv.style.right = '40px';
+//                 legendDiv.style.width = '180px';
+//                 legendDiv.style.padding = '8px';
+//                 legendDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+//                 legendDiv.style.border = '1px solid #e2e8f0';
+//                 legendDiv.style.borderRadius = '6px';
+//                 legendDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+//                 legendDiv.style.fontFamily = 'sans-serif';
+//                 legendDiv.style.zIndex = '10';
+//                 container.appendChild(legendDiv);
+//             }
+
+//             legendDiv.innerHTML = `
+//             <div style="display: flex; justify-content: space-between; color: #475569; font-size: 10px; font-weight: 600; margin-bottom: 4px;">
+//                 <span>${minN.toFixed(2)}</span>
+//                 <span style="color: #64748b; font-weight: normal;">N_HI (10²¹ cm⁻²)</span>
+//                 <span>${maxN.toFixed(2)}</span>
+//             </div>
+//             <div style="
+//                 width: 100%; 
+//                 height: 8px; 
+//                 border-radius: 2px; 
+//                 background: linear-gradient(to right, 
+//                     rgb(13,8,135), rgb(75,3,161), rgb(126,3,168), 
+//                     rgb(168,34,150), rgb(203,70,121), rgb(231,115,87), 
+//                     rgb(248,166,58), rgb(240,249,33));
+//             "></div>
+//         `;
+//         }
+//     };
+
+//     const fwhmMarkersPlugin = {
+//         id: 'fwhmMarkers',
+//         beforeDatasetsDraw(chart) {
+//             if (!diskSummary || typeof diskSummary.angularFwhmDeg === 'undefined' || typeof diskSummary.peakLatitudeDeg === 'undefined') return;
+
+//             const { ctx, chartArea, scales } = chart;
+//             const peakB = parseFloat(diskSummary.peakLatitudeDeg);
+//             const fwhm = parseFloat(diskSummary.angularFwhmDeg);
+//             if (isNaN(peakB) || isNaN(fwhm)) return;
+
+//             const valUpper = peakB + (fwhm / 2);
+//             const valLower = peakB - (fwhm / 2);
+
+//             const yPeak = scales.y.getPixelForValue(peakB);
+//             const yUpper = scales.y.getPixelForValue(valUpper);
+//             const yLower = scales.y.getPixelForValue(valLower);
+
+//             ctx.save();
+//             ctx.lineWidth = 1.5;
+//             ctx.font = '600 9px sans-serif';
+//             ctx.fillStyle = '#64748b';
+//             ctx.textAlign = 'right';
+
+//             const rightMarginOffset = chartArea.right - 8;
+
+//             // FWHM Upper Limit (Text sits above line)
+//             if (yUpper >= chartArea.top && yUpper <= chartArea.bottom) {
+//                 ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+//                 ctx.setLineDash([5, 5]);
+//                 ctx.beginPath();
+//                 ctx.moveTo(chartArea.left, yUpper);
+//                 ctx.lineTo(chartArea.right, yUpper);
+//                 ctx.stroke();
+
+//                 ctx.textBaseline = 'bottom';
+//                 ctx.fillText(`FWHM Upper (${valUpper >= 0 ? '+' : ''}${valUpper.toFixed(2)}°)`, rightMarginOffset, yUpper - 2);
+//             }
+
+//             // FWHM Lower Limit (Text sits below line)
+//             if (yLower >= chartArea.top && yLower <= chartArea.bottom) {
+//                 ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+//                 ctx.setLineDash([5, 5]);
+//                 ctx.beginPath();
+//                 ctx.moveTo(chartArea.left, yLower);
+//                 ctx.lineTo(chartArea.right, yLower);
+//                 ctx.stroke();
+
+//                 ctx.textBaseline = 'top';
+//                 ctx.fillText(`FWHM Lower (${valLower >= 0 ? '+' : ''}${valLower.toFixed(2)}°)`, rightMarginOffset, yLower + 3);
+//             }
+
+//             // Peak Centerline (Text sits above line)
+//             if (yPeak >= chartArea.top && yPeak <= chartArea.bottom) {
+//                 ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+//                 ctx.setLineDash([]);
+//                 ctx.beginPath();
+//                 ctx.moveTo(chartArea.left, yPeak);
+//                 ctx.lineTo(chartArea.right, yPeak);
+//                 ctx.stroke();
+
+//                 ctx.textBaseline = 'bottom';
+//                 ctx.fillText(`Peak (${peakB >= 0 ? '+' : ''}${peakB.toFixed(2)}°)`, rightMarginOffset, yPeak - 2);
+//             }
+
+//             ctx.restore();
+//         }
+//     };
+
+
+
+
+//     const timePadding = (maxTime - minTime || 1) * 0.03;
+
+//     densityChart = new Chart(ctx, {
+//         type: "scatter",
+//         data: {
+//             datasets: [
+//                 {
+//                     label: "HI Column Density (N_HI)",
+//                     data: scatterData,
+//                     backgroundColor: pointColors,
+//                     borderColor: "transparent",
+//                     borderWidth: 1,
+//                     pointRadius: 4.5,
+//                     pointHoverRadius: 6.5
+//                 }
+//             ]
+//         },
+//         options: {
+//             responsive: true,
+//             maintainAspectRatio: false,
+//             interaction: { mode: "nearest", intersect: false },
+//             scales: {
+//                 x: {
+//                     type: "linear",
+//                     min: minTime - timePadding,
+//                     max: maxTime + timePadding,
+//                     reverse: false,
+//                     grid: { color: "#f1f5f9", drawBorder: false },
+//                     ticks: {
+//                         color: "#64748b",
+//                         font: { size: 11 },
+//                         callback: (val) => {
+//                             if (!val || val < 100000) return val; // fallback for index
+//                             const d = new Date(val);
+//                             const hh = String(d.getUTCHours()).padStart(2, '0');
+//                             const mm = String(d.getUTCMinutes()).padStart(2, '0');
+//                             const ss = String(d.getUTCSeconds()).padStart(2, '0');
+//                             return `${hh}:${mm}:${ss}`;
+//                         }
+
+//                     },
+//                     title: { display: true, text: "Timeline (s / units)", color: "#334155", font: { size: 12, weight: "600" } }
+//                 },
+//                 y: {
+//                     min: -90,
+//                     max: 90,
+//                     grid: { color: "#f1f5f9", drawBorder: false },
+//                     ticks: { stepSize: 30, color: "#64748b", font: { size: 11 }, callback: (val) => `${val}°` },
+//                     title: { display: true, text: "Galactic Latitude b (°)", color: "#334155", font: { size: 12, weight: "600" } }
+//                 }
+//             },
+//             plugins: {
+//                 legend: { display: false },
+//                 tooltip: {
+//                     backgroundColor: "#0f172a",
+//                     titleColor: "#f8fafc",
+//                     bodyColor: "#f8fafc",
+//                     padding: 10,
+//                     cornerRadius: 6,
+//                     callbacks: {
+//                         title: (items) => {
+//                             const rawX = items[0].parsed.x;
+//                             const rawY = items[0].parsed.y;
+
+//                             const rawL = items[0].raw.l_disp;
+//                             const displayL = rawL < 0 ? rawL + 360 : rawL;
+
+//                             const d = new Date(rawX);
+//                             const dateStr = d.toISOString().split('T')[0];
+//                             const hh = String(d.getUTCHours()).padStart(2, '0');
+//                             const mm = String(d.getUTCMinutes()).padStart(2, '0');
+//                             const ss = String(d.getUTCSeconds()).padStart(2, '0');
+
+//                             return `Time: ${dateStr} ${hh}:${mm}:${ss} UTC | b: ${rawY.toFixed(2)}° (l: ${displayL.toFixed(2)}°)`;
+//                         },
+//                         label: (ctx) => `N_HI: ${ctx.raw.density.toFixed(3)} ×10²¹ cm⁻²`
+//                     }
+//                 }
+//             }
+//         },
+//         plugins: [htmlColorBarPlugin, fwhmMarkersPlugin]
+//     });
+// }
 
 
 function calculateOortA_WNM(dLocal = 1.0, sin2lCutoff = 0.20, powerThreshold = 0.005, cnmFraction = 0.35, sharpnessCutoff = 0.002) {
@@ -1033,7 +1422,7 @@ function calculateOortA_WNM(dLocal = 1.0, sin2lCutoff = 0.20, powerThreshold = 0
         cleanFrames: count,
         oortA: parseFloat(oortA.toFixed(2)),
         iauStandard: iauStandard,
-        deviationPct: parseFloat(deviation.toFixed(1))
+        deviationPct: parseFloat(deviation.toFixed(2))
     };
 }
 
@@ -1052,8 +1441,8 @@ function calculateGlobalMassFractions(phaseReportData) {
     const combined = totalCNM + totalWNM || 1;
 
     return {
-        globalCNMShare: parseFloat(((totalCNM / combined) * 100).toFixed(1)),
-        globalWNMShare: parseFloat(((totalWNM / combined) * 100).toFixed(1)),
+        globalCNMShare: parseFloat(((totalCNM / combined) * 100).toFixed(2)),
+        globalWNMShare: parseFloat(((totalWNM / combined) * 100).toFixed(2)),
         sampleSize: phaseReportData.length
     };
 }
@@ -1117,9 +1506,9 @@ function analyzeGasPhases(cnmFractionThreshold = 0.35, sharpnessThreshold = 0.00
         phaseReport.push({
             frame: index + 1,
             time: block.time.split(" ")[1] || block.time,
-            galacticL: coords ? coords.l.toFixed(1) + "°" : "N/A",
-            cnmPercent: parseFloat(cnmRatio.toFixed(1)),
-            wnmPercent: parseFloat(wnmRatio.toFixed(1)),
+            galacticL: coords ? coords.l.toFixed(2) + "°" : "N/A",
+            cnmPercent: parseFloat(cnmRatio.toFixed(2)),
+            wnmPercent: parseFloat(wnmRatio.toFixed(2)),
             vCNM: parseFloat(vCNM.toFixed(2)),
             vWNM: parseFloat(vWNM.toFixed(2)),
             shearDeltaV: parseFloat(deltaV.toFixed(2))
@@ -1132,8 +1521,8 @@ function analyzeGasPhases(cnmFractionThreshold = 0.35, sharpnessThreshold = 0.00
 
     let summary = {
         totalFrames: phaseReport.length,
-        globalCNMPercent: parseFloat(globalCNM.toFixed(1)),
-        globalWNMPercent: parseFloat(globalWNM.toFixed(1)),
+        globalCNMPercent: parseFloat(globalCNM.toFixed(2)),
+        globalWNMPercent: parseFloat(globalWNM.toFixed(2)),
         denseCloudFrames: cnmDenseCount,
         highShearFrames: highShearCount,
         framesData: phaseReport
