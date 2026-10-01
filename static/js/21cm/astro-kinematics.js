@@ -775,7 +775,7 @@ function renderColumnDensity() {
     let maxTime = -Infinity;
 
     const tempPoints = [];
-    globalBlocksCache.forEach((block) => {
+    globalBlocksCache.forEach((block, idx) => {
         let coords = typeof getGalacticCoordinates === "function" ? getGalacticCoordinates(block.time) : null;
         if (!coords || coords.l === null || coords.b === null) return;
 
@@ -841,7 +841,7 @@ function renderColumnDensity() {
     const range = maxN - minN || 1;
 
     tempPoints.forEach((pt) => {
-        scatterData.push({ x: pt.x, y: pt.y, density: pt.density, time:pt.time });
+        scatterData.push({ x: pt.x, y: pt.y, density: pt.density, time: pt.time });
         const norm = Math.min(Math.max((pt.density - minN) / range, 0), 1);
 
         const rgb = getPlasmaColor(norm);
@@ -1044,6 +1044,10 @@ function renderColumnDensity() {
 
                             return `l: ${displayX.toFixed(2)}°, b: ${rawY.toFixed(2)}°, t: ${timeString}`;
                         },
+                        label: (context) => {
+                            const density = context.raw.density;
+                            return `HI Column Density (N_HI): ${density.toFixed(2)}`;
+                        }
                     }
                 }
             }

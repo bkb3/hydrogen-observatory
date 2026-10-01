@@ -45,7 +45,7 @@ while true; do
 
     # Core internal daily capture loop (runs every 10 mins until midnight UTC)
     while [ "$(date -u +'%d')" == "$DAY" ]; do
-        stdbuf -oL rtl_power_fftw -d "$SDR_INDEX" -f 1420.850M -b 2048 -g 300 -t 600 >> "$DATA_FILE" 2>> "$LOG_FILE"
+        stdbuf -oL rtl_power_fftw -d "$SDR_INDEX" -f 1420.900M -b 2048 -g 300 -t 600 >> "$DATA_FILE" 2>> "$LOG_FILE"
 
         sleep 1
     done
