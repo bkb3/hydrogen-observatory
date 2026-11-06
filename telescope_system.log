@@ -1537,3 +1537,64 @@ Moving to tomorrow's nested calendar directory...
 🛰️ Initiating core background logging loop for 2026-11-04...
 🔔 Midnight reached! Compressing data for 2026-11-04...
 Committing full day's data and local directory changes for 2026-11-04...
+[main 911550b] Auto daily spectrum upload and updates: 2026-11-04
+ 3 files changed, 11 insertions(+)
+ create mode 100644 data/2026/11/04/hydrogen.dat.gz
+ create mode 100644 data/2026/11/04/scan.log.gz
+To github.com:bkb3/hydrogen-observatory.git
+   1796b87..911550b  main -> main
+Moving to tomorrow's nested calendar directory...
+🛰️ Initiating core background logging loop for 2026-11-05...
+Terminated
+[2026-11-05 06:19:38] WATCHDOG: Radio acquisition watchdog started.
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-11-05...
+[2026-11-05 07:11:24] WATCHDOG: Hydrogen scan.log is 2 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 07:11:24] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+Terminated
+Terminated
+[2026-11-05 07:11:25] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+[2026-11-05 07:18:51] WATCHDOG: Radio acquisition watchdog started.
+[2026-11-05 07:18:52] WATCHDOG: Hydrogen scan.log is 2 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 07:18:52] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+/mnt/usb_data/radio_astronomy/hydrogen/radio_telescope.sh: line 17: /mnt/usb_data/radio_astronomy/hydrogen//telescope_system.log: Permission denied
+[2026-11-05 07:18:55] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-11-05...
+[2026-11-05 07:23:46] WATCHDOG: Hydrogen scan.log is 2 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 07:23:46] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+Terminated
+Terminated
+[2026-11-05 07:23:47] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-11-05...
+[2026-11-05 08:18:37] WATCHDOG: Hydrogen scan.log is 3 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 08:18:37] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+Terminated
+Terminated
+[2026-11-05 08:18:38] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+[2026-11-05 08:15:14] WATCHDOG: Radio acquisition watchdog started.
+[2026-11-05 08:15:15] WATCHDOG: Hydrogen scan.log is 3 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 08:15:15] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+[2026-11-05 08:15:18] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-11-05...
+[2026-11-05 17:56:06] WATCHDOG: Hydrogen scan.log is 7 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 17:56:06] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+Terminated
+Terminated
+[2026-11-05 17:56:07] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+[2026-11-05 23:19:17] WATCHDOG: Radio acquisition watchdog started.
+[2026-11-05 23:19:18] WATCHDOG: Hydrogen scan.log is 7 MB: /mnt/usb_data/radio_astronomy/hydrogen/data/2026/11/05/scan.log
+[2026-11-05 23:19:18] WATCHDOG: scan.log grew beyond 1 MB. Probably SDR disconnected. Stopping rtl_power_fftw and hydrogen-observatory.service.
+[2026-11-05 23:19:22] WATCHDOG: rtl_power_fftw and hydrogen-observatory.service stopped.
+✅ Found Target SDR at Index: 2
+🌌 Initializing Hydrogen Line Automated USB Observatory Control Loop...
+🛰️ Initiating core background logging loop for 2026-11-05...
+🔔 Midnight reached! Compressing data for 2026-11-05...
+Committing full day's data and local directory changes for 2026-11-05...
